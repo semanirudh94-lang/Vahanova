@@ -1,23 +1,22 @@
 export const SITE = {
   name: "VahanProof",
   tagline: "Your Vehicle, Our Responsibility",
-  whatsapp: "919999999999",
-  phoneDisplay: "+91 99999 99999",
-  email: "hello@vahanproof.in",
+  whatsapp: "919068511310",
+  phoneDisplay: "+91 90685 11310",
+  email: "semanirudh@gmail.com",
   city: "Dehradun",
+  upi: "semanirudh94@oksbi",
+  payeeName: "VahanProof",
 };
 
 export const WA_LINK = `https://wa.me/${SITE.whatsapp}`;
 
-export const EMERGENCY_MSG = [
-  "EMERGENCY HELP",
-  "Problem: (puncture / fuel / battery / towing / other)",
-  "Location: (apni live location bhejo)",
-  "Vehicle: (e.g. Activa 6G)",
-  "Name: ",
-].join("\n");
-
-export const EMERGENCY_WA = `https://wa.me/${SITE.whatsapp}?text=${encodeURIComponent(EMERGENCY_MSG)}`;
+export function upiLink(amount, note) {
+  const params = new URLSearchParams({ pa: SITE.upi, pn: SITE.payeeName, cu: "INR" });
+  if (amount) params.set("am", String(amount));
+  if (note) params.set("tn", note);
+  return `upi://pay?${params.toString()}`;
+}
 
 export const RATES = [
   { name: "General Service — Bike", price: "₹499" },

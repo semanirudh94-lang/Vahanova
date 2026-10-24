@@ -10,14 +10,13 @@ import {
   Truck,
   Users,
   LifeBuoy,
-  MessageCircle,
   CheckCircle2,
   ChevronRight,
   Star,
 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import WhatsAppFloat from "@/components/WhatsAppFloat";
-import { SITE, WA_LINK, EMERGENCY_WA, RATES, SURVEY_STATS } from "@/data/site";
+import { SITE, WA_LINK, RATES, SURVEY_STATS } from "@/data/site";
 
 const FEATURES = [
   {
@@ -89,20 +88,18 @@ export default function Home() {
                 and proof of every part — all in one place, in {SITE.city}.
               </p>
               <div className="mt-8 flex flex-wrap gap-4">
-                <a
-                  href={WA_LINK}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <Link
+                  href="/book"
                   className="inline-flex items-center gap-2 rounded-lg bg-brand-amber px-6 py-3 font-semibold text-navy transition hover:brightness-110"
                 >
-                  <MessageCircle className="h-5 w-5" />
-                  Book on WhatsApp
-                </a>
+                  <Wrench className="h-5 w-5" />
+                  Book a Service
+                </Link>
                 <Link
-                  href="/dashboard"
+                  href="/login"
                   className="inline-flex items-center gap-2 rounded-lg border border-navy-border px-6 py-3 font-medium text-gray-200 transition hover:border-white/30"
                 >
-                  Login as Customer
+                  Login / Sign Up
                 </Link>
               </div>
               <div className="mt-8 flex flex-wrap gap-x-6 gap-y-2 text-sm text-gray-300">
@@ -363,14 +360,12 @@ export default function Home() {
                   Verified badge + regular batches, bas ek condition — no poaching
                 </li>
               </ul>
-              <a
-                href={WA_LINK}
-                target="_blank"
-                rel="noopener noreferrer"
+              <Link
+                href="/login"
                 className="mt-7 inline-flex items-center gap-2 rounded-lg border border-brand-blue bg-brand-blue/10 px-6 py-3 font-semibold text-white transition hover:bg-brand-blue/20"
               >
                 <Wrench className="h-5 w-5" /> Join as a Partner
-              </a>
+              </Link>
             </div>
             <div className="rounded-xl border border-navy-border bg-navy-light p-6">
               <div className="flex items-center gap-4">
@@ -417,20 +412,18 @@ export default function Home() {
               Fuel khatam, puncture, battery dead — ek message karo, mechanic
               assign hota hai. {SITE.city} ke andar.
             </p>
-            <a
-              href={EMERGENCY_WA}
-              target="_blank"
-              rel="noopener noreferrer"
+            <Link
+              href="/emergency"
               className="inline-flex items-center gap-2 rounded-lg bg-brand-amber px-8 py-3.5 text-lg font-bold text-navy transition hover:brightness-110"
             >
               <Siren className="h-5 w-5" /> Get Emergency Help
-            </a>
+            </Link>
             <div className="grid max-w-2xl gap-3 text-left text-sm text-gray-300 sm:grid-cols-3">
               <div className="rounded-lg bg-navy/60 p-3">
-                <span className="font-semibold text-brand-amber">1.</span> Message bhejo — problem + live location ek hi message me
+                <span className="font-semibold text-brand-amber">1.</span> Site pe form bharo — problem + location, bas
               </div>
               <div className="rounded-lg bg-navy/60 p-3">
-                <span className="font-semibold text-brand-amber">2.</span> Hum nearest verified mechanic se connect karte hain — aam tor pe 15-30 min
+                <span className="font-semibold text-brand-amber">2.</span> Nearest verified mechanic assign hota hai — aam tor pe 15-30 min
               </div>
               <div className="rounded-lg bg-navy/60 p-3">
                 <span className="font-semibold text-brand-amber">3.</span> Kaam khatam — photo + bill aapke Vehicle Passport me

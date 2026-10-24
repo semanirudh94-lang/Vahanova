@@ -39,16 +39,16 @@ export default function Navbar() {
 
         <div className="hidden items-center gap-3 md:flex">
           <Link
-            href="/dashboard"
+            href="/login"
             className="rounded-lg border border-navy-border px-4 py-2 text-sm font-medium text-gray-200 transition hover:border-white/30"
           >
             Login
           </Link>
           <Link
-            href="/dashboard"
+            href="/book"
             className="rounded-lg bg-brand-amber px-4 py-2 text-sm font-semibold text-navy transition hover:brightness-110"
           >
-            Sign Up
+            Book Service
           </Link>
         </div>
 
@@ -75,16 +75,16 @@ export default function Navbar() {
           ))}
           <div className="mt-2 flex gap-3">
             <Link
-              href="/dashboard"
+              href="/login"
               className="flex-1 rounded-lg border border-navy-border px-4 py-2 text-center text-sm font-medium"
             >
               Login
             </Link>
             <Link
-              href="/dashboard"
+              href="/book"
               className="flex-1 rounded-lg bg-brand-amber px-4 py-2 text-center text-sm font-semibold text-navy"
             >
-              Sign Up
+              Book Service
             </Link>
           </div>
         </div>
