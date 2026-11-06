@@ -1,24 +1,29 @@
 "use client";
 
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import {
-  ShieldCheck,
   Siren,
   ArrowLeft,
   Loader2,
   Phone,
   CheckCircle2,
-  Star,
   MapPin,
   Navigation,
 } from "lucide-react";
-import { currentUser, createBooking, bookingById, userById } from "@/lib/db";
+import { currentUser, createBooking, bookingById } from "@/lib/db";
+import { areaCoord } from "@/lib/geo";
+import { SITE } from "@/data/site";
+import Brand from "@/components/Brand";
+import LocationField from "@/components/LocationField";
+
+const PinPicker = dynamic(() => import("@/components/TrackMap").then((m) => m.PinPicker), { ssr: false });
 
 const PROBLEMS = ["Puncture", "Fuel — Petrol", "Fuel — Diesel", "Battery Jumpstart", "Towing", "Other"];
 const VEHICLES = ["Bike", "Scooter", "Car"];
 
-const TIMELINE = ["Request placed", "Mechanic assigned", "On the way", "Service in progress", "Completed"];
+const TIMELINE = ["Request placed", "Provider accepted", "On the way", "Work in progress", "Completed"];
 
 const inputCls =
   "w-full rounded-lg border border-navy-border bg-navy px-4 py-3 text-sm text-white outline-none placeholder:text-gray-600 focus:border-brand-blue";
@@ -27,6 +32,7 @@ export default function Emergency() {
   const [step, setStep] = useState("form");
   const [bookingId, setBookingId] = useState(null);
   const [form, setForm] = useState({ problem: "", vehicle: "Bike", location: "", name: "", phone: "" });
+  const [loc, setLoc] = useState({ point: null, accuracy: null });
 
   useEffect(() => {
     (async () => {
@@ -35,26 +41,24 @@ export default function Emergency() {
     })();
   }, []);
 
-  useEffect(() => {
-    if (step !== "searching") return;
-    const t = setTimeout(() => setStep("found"), 2500);
-    return () => clearTimeout(t);
-  }, [step]);
-
   const [booking, setBooking] = useState(null);
   const [mechanic, setMechanic] = useState(null);
 
   useEffect(() => {
-    if (step !== "found" || !bookingId) return;
+    if (step !== "waiting" || !bookingId) return;
     let alive = true;
     async function load() {
       const b = await bookingById(bookingId);
       if (!alive || !b) return;
       setBooking(b);
-      setMechanic(b.mechanicId ? await userById(b.mechanicId) : null);
+      setMechanic(
+        b.mechanicId
+          ? { name: b.mechanicName || "Provider", phone: b.mechanicPhone || "", area: b.mechanicArea || "", jobs: b.mechanicJobs || 0 }
+          : null
+      );
     }
     load();
-    const t = setInterval(load, 3000);
+    const t = setInterval(load, 5000);
     return () => {
       alive = false;
       clearInterval(t);
@@ -74,25 +78,27 @@ export default function Emergency() {
       kind: "emergency",
       problem: form.problem,
       service: form.problem,
+      vehicleType: form.vehicle,
       vehicleNumber: form.vehicle,
       address: form.location,
+      coord: loc.point,
+      accuracy: loc.accuracy,
       amount: 0,
     });
     setBookingId(b.id);
-    setStep("searching");
+    setBooking(b);
+    setStep("waiting");
   }
 
-  const ready = form.problem && form.location && form.name;
+  const ready = form.problem && form.name && (form.location || loc.point);
+  const whereShown = form.location || (loc.point ? "GPS pin shared" : "");
 
   return (
     <div className="min-h-screen">
       <header className="border-b border-white/5 bg-navy-light">
         <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-4 sm:px-6">
-          <Link href="/" className="flex items-center gap-2">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-amber text-navy">
-              <ShieldCheck className="h-4 w-4" />
-            </span>
-            <span className="font-bold">VahanProof</span>
+          <Link href="/" className="flex items-center gap-2.5">
+            <Brand markClass="h-6 w-auto" textClass="text-base" />
           </Link>
           <Link href="/" className="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-white">
             <ArrowLeft className="h-4 w-4" /> Back to home
@@ -103,9 +109,9 @@ export default function Emergency() {
       <main className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
         {step === "needlogin" ? (
           <div className="rounded-xl border border-navy-border bg-navy-light p-8 text-center">
-            <h2 className="text-xl font-bold">Login karke request bhejo</h2>
+            <h2 className="text-xl font-bold">Sign in to send this request</h2>
             <p className="mt-2 text-sm text-gray-400">
-              Taaki request teri history me save ho aur aapko status track kar sako.
+              Your request and its status are saved against your account.
             </p>
             <Link href="/login" className="mt-5 inline-block rounded-lg bg-brand-amber px-6 py-3 font-semibold text-navy">
               Login / Sign Up
@@ -117,8 +123,8 @@ export default function Emergency() {
               <Siren className="h-8 w-8 text-brand-amber" /> Emergency Help
             </h1>
             <p className="mt-2 text-sm text-gray-400">
-              Form bharo — system nearest verified mechanic ko request bhej deta hai. Koi WhatsApp
-              ya call nahi karni.
+              Send the problem and your location. Providers working in {SITE.city} see it right away, and the first
+              one to accept is assigned to you.
             </p>
 
             {step === "form" && (
@@ -170,15 +176,33 @@ export default function Emergency() {
                   </div>
                   <div>
                     <label className="mb-2 block text-sm font-medium text-gray-300">Phone</label>
-                    <input className={inputCls} value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="Mechanic isko call karega" />
+                    <input className={inputCls} value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="The provider calls this number" />
                   </div>
                 </div>
 
                 <div>
                   <label className="mb-2 block text-sm font-medium text-gray-300">
-                    Location <span className="text-gray-500">— area ya landmark</span>
+                    Location <span className="text-gray-500">— area or landmark</span>
                   </label>
-                  <input className={inputCls} value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} placeholder="e.g. ISBT ke paas, Rajpur Road" />
+                  <input className={inputCls} value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} placeholder="e.g. Near ISBT, Rajpur Road" />
+                </div>
+
+                <div className="rounded-lg border border-navy-border bg-navy p-4">
+                  <LocationField
+                    label="Pin on the map"
+                    point={loc.point}
+                    accuracy={loc.accuracy}
+                    onChange={(next) => setLoc(next)}
+                    hint="Stranded on the road? Share the GPS pin so the provider does not have to ask you where you are."
+                  />
+                  <div className="mt-4">
+                    <PinPicker
+                      point={loc.point}
+                      center={areaCoord(form.location)}
+                      emptyHint="Cannot get a signal? Tap the map at your lane or landmark so the provider still has a pin."
+                      onChange={(p) => setLoc({ point: p, accuracy: null })}
+                    />
+                  </div>
                 </div>
 
                 <button
@@ -188,26 +212,33 @@ export default function Emergency() {
                 >
                   Request Emergency Help
                 </button>
+                <p className="text-xs text-gray-500">
+                  The request stays open until a provider accepts it. If it is urgent, call {SITE.phoneDisplay} as
+                  well.
+                </p>
               </form>
             )}
 
-            {step === "searching" && (
+            {step === "waiting" && !mechanic && (
               <div className="mt-16 flex flex-col items-center text-center">
                 <Loader2 className="h-10 w-10 animate-spin text-brand-amber" />
-                <h2 className="mt-6 text-2xl font-bold">Nearest verified mechanic dhoond rahe hain…</h2>
+                <h2 className="mt-6 text-2xl font-bold">Looking for a free provider…</h2>
                 <p className="mt-2 text-sm text-gray-400">
-                  {form.problem} · {form.vehicle} · {form.location}
+                  {form.problem} · {form.vehicle} · {whereShown}
+                </p>
+                <p className="mt-2 text-sm text-gray-500">
+                  This page updates on its own. Booking #{booking?.code}.
                 </p>
               </div>
             )}
 
-            {step === "found" && booking && (
+            {step === "waiting" && mechanic && booking && (
               <>
                 <h2 className="mt-6 flex items-center gap-2 text-2xl font-bold">
-                  <CheckCircle2 className="h-7 w-7 text-green-400" /> Mechanic assigned
+                  <CheckCircle2 className="h-7 w-7 text-green-400" /> Provider accepted
                 </h2>
                 <p className="mt-2 text-sm text-gray-400">
-                  Request #{booking.code} — status live dashboard pe update hota rahega
+                  Request #{booking.code} — the status updates live below.
                 </p>
 
                 <div className="mt-6 rounded-xl border border-navy-border bg-navy-light p-6">
@@ -216,36 +247,27 @@ export default function Emergency() {
                       <Siren className="h-6 w-6 text-brand-amber" />
                     </div>
                     <div>
-                      <p className="font-semibold">{mechanic?.name}</p>
+                      <p className="font-semibold">{mechanic.name}</p>
                       <p className="flex items-center gap-1 text-xs text-gray-400">
-                        <MapPin className="h-3.5 w-3.5" /> {mechanic?.area} · {form.location}
+                        <MapPin className="h-3.5 w-3.5" /> {mechanic.area || SITE.city} · to {form.location}
                       </p>
                     </div>
-                    <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-green-500/10 px-3 py-1 text-xs font-medium text-green-400">
-                      <ShieldCheck className="h-3.5 w-3.5" /> Verified
-                    </span>
                   </div>
-                  <div className="mt-5 grid grid-cols-3 gap-3 text-center text-sm">
+                  <div className="mt-5 grid grid-cols-2 gap-3 text-center text-sm">
                     <div className="rounded-lg bg-navy p-3">
-                      <p className="flex items-center justify-center gap-1 font-bold">
-                        <Star className="h-4 w-4 text-brand-amber" /> {mechanic?.rating}
-                      </p>
-                      <p className="text-xs text-gray-500">Rating</p>
+                      <p className="font-bold">{mechanic.jobs || 0}</p>
+                      <p className="text-xs text-gray-500">Jobs on VAHANOVA</p>
                     </div>
                     <div className="rounded-lg bg-navy p-3">
-                      <p className="font-bold">{mechanic?.jobs}+</p>
-                      <p className="text-xs text-gray-500">Jobs done</p>
-                    </div>
-                    <div className="rounded-lg bg-navy p-3">
-                      <p className="font-bold text-brand-amber">~{booking.etaMin} min</p>
-                      <p className="text-xs text-gray-500">Arriving</p>
+                      <p className="font-bold text-brand-amber">{booking.etaMin ? `~${booking.etaMin} min` : "—"}</p>
+                      <p className="text-xs text-gray-500">Estimated arrival</p>
                     </div>
                   </div>
                   <a
-                    href={`tel:${mechanic?.phone}`}
+                    href={`tel:${mechanic.phone}`}
                     className="mt-5 flex w-full items-center justify-center gap-2 rounded-lg bg-brand-blue px-5 py-3 text-sm font-semibold text-white transition hover:brightness-110"
                   >
-                    <Phone className="h-4 w-4" /> Call mechanic
+                    <Phone className="h-4 w-4" /> Call provider
                   </a>
                   <Link
                     href={`/track?b=${booking.code}`}
@@ -253,10 +275,13 @@ export default function Emergency() {
                   >
                     <Navigation className="h-4 w-4" /> Track on map
                   </Link>
+                  <p className="mt-3 text-xs text-gray-500">
+                    The provider quotes the cost on the spot and is paid directly. VAHANOVA adds no fee to this job.
+                  </p>
                 </div>
 
                 <div className="mt-6 rounded-xl border border-navy-border bg-navy-light p-6">
-                  <p className="text-sm font-semibold">Live status</p>
+                  <p className="text-sm font-semibold">Status</p>
                   <ol className="mt-4 space-y-4">
                     {TIMELINE.map((t, i) => {
                       const done = i <= (stageIndex >= 0 ? stageIndex : 1);
@@ -300,7 +325,7 @@ export default function Emergency() {
 
 const STATUS_KEY = {
   pending: "placed",
-  assigned: "assigned",
+  assigned: "accepted",
   on_way: "way",
   in_progress: "progress",
   completed: "completed",

@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { ShieldCheck, Bell, LogOut } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { currentUser, logout } from "@/lib/db";
 import WhatsAppFloat from "@/components/WhatsAppFloat";
+import Brand from "@/components/Brand";
 
 export default function AppShell({ items, active, children }) {
   const router = useRouter();
@@ -16,17 +17,21 @@ export default function AppShell({ items, active, children }) {
     currentUser().then((u) => {
       setUser(u);
       setLoaded(true);
+      if (u && !u.name) router.replace("/profile");
     });
-  }, []);
+  }, [router]);
 
   if (!loaded) return null;
+
+  // A brand-new account has no name yet — the profile window collects it.
+  if (user && !user.name) return null;
 
   if (!user) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 px-4 text-center">
-        <ShieldCheck className="h-10 w-10 text-brand-amber" />
-        <h1 className="text-2xl font-bold">Pehle login karo</h1>
-        <p className="text-sm text-gray-400">Ye page tere account ka data dikhata hai.</p>
+        <img src="/brand/logo.png" alt="VAHANOVA — Every journey, taken care of." width={986} height={545} className="h-20 w-auto" />
+        <h1 className="text-2xl font-bold">Please sign in</h1>
+        <p className="text-sm text-gray-400">This page shows the details of your account.</p>
         <Link
           href="/login"
           className="rounded-lg bg-brand-amber px-6 py-3 font-semibold text-navy transition hover:brightness-110"
@@ -45,11 +50,8 @@ export default function AppShell({ items, active, children }) {
   return (
     <div className="flex min-h-screen">
       <aside className="fixed inset-y-0 left-0 hidden w-64 flex-col border-r border-white/5 bg-navy-light md:flex">
-        <Link href="/" className="flex items-center gap-2 px-5 py-5">
-          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-amber text-navy">
-            <ShieldCheck className="h-5 w-5" />
-          </span>
-          <span className="text-lg font-bold">VahanProof</span>
+        <Link href="/" className="flex items-center gap-2.5 px-5 py-5">
+          <Brand />
         </Link>
         <nav className="flex-1 space-y-1 px-3 py-2">
           {items.map((n) => (
@@ -80,10 +82,7 @@ export default function AppShell({ items, active, children }) {
 
       <div className="flex-1 md:ml-64">
         <div className="flex items-center gap-2 border-b border-white/5 bg-navy-light px-4 py-3 md:hidden">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-amber text-navy">
-            <ShieldCheck className="h-4 w-4" />
-          </span>
-          <span className="font-bold">VahanProof</span>
+          <Brand markClass="h-6 w-auto" textClass="text-base" />
           <button onClick={signOut} className="ml-auto text-gray-400" aria-label="Logout">
             <LogOut className="h-5 w-5" />
           </button>
@@ -93,17 +92,11 @@ export default function AppShell({ items, active, children }) {
           <div>
             <p className="text-lg font-bold">
               Hello, {user.name}
-              {user.role === "mechanic" ? " (Mechanic)" : ""}
+              {user.role === "mechanic" ? " · Service provider" : ""}
             </p>
             <p className="text-xs text-gray-500">{active}</p>
           </div>
           <div className="flex items-center gap-3">
-            <button className="relative rounded-lg border border-navy-border p-2 text-gray-300" aria-label="Notifications">
-              <Bell className="h-5 w-5" />
-              <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-brand-amber text-[10px] font-bold text-navy">
-                2
-              </span>
-            </button>
             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-blue text-sm font-bold">
               {user.name.slice(0, 2).toUpperCase()}
             </div>

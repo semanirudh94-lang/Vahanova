@@ -1,15 +1,33 @@
 import "./globals.css";
+import ServiceWorker from "@/components/ServiceWorker";
 
 export const metadata = {
-  title: "VahanProof — Your Vehicle, Our Responsibility",
+  title: "VAHANOVA — Every journey, taken care of.",
   description:
-    "Fixed-rate vehicle service in Dehradun with 30-day written warranty, photo + bill proof, and a Digital Vehicle Passport for every service.",
+    "Doorstep and emergency vehicle service in Dehradun with photo and bill proof for every part, plus a digital vehicle passport that remembers your insurance, PUC and fitness dates. Works offline and installs like an app.",
+  applicationName: "VAHANOVA",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    title: "VAHANOVA",
+    statusBarStyle: "black-translucent",
+  },
+};
+
+export const viewport = {
+  themeColor: "#0B1220",
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body className="bg-navy text-white antialiased">{children}</body>
+      <body className="bg-navy text-white antialiased">
+        {children}
+        <ServiceWorker />
+      </body>
     </html>
   );
 }

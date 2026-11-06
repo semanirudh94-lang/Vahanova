@@ -51,14 +51,6 @@ body {
   justify-content: center;
   position: relative;
 }
-.vp-marker--mech {
-  width: 34px;
-  height: 34px;
-  border-radius: 9999px;
-  background: #182338;
-  border: 2px solid #2563eb;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.25);
-}
 .vp-marker--pin {
   width: 18px;
   height: 18px;
@@ -66,21 +58,27 @@ body {
   border: 3px solid #0b1220;
   box-shadow: 0 0 12px rgba(245, 158, 11, 0.7);
 }
-.vp-pulse {
-  position: absolute;
-  inset: -8px;
-  border-radius: 9999px;
-  border: 2px solid #2563eb;
-  animation: vp-ping 1.8s cubic-bezier(0, 0, 0.2, 1) infinite;
+
+/* The passport is handed to a buyer or an insurer, so printing flips the dark UI
+   to black-on-white and drops the app chrome. */
+@page {
+  margin: 14mm;
 }
-@keyframes vp-ping {
-  0% {
-    transform: scale(0.7);
-    opacity: 0.9;
+@media print {
+  aside,
+  header,
+  .print-hide {
+    display: none !important;
   }
-  80%,
-  100% {
-    transform: scale(1.5);
-    opacity: 0;
+  [class~="md:ml-64"] {
+    margin-left: 0 !important;
+  }
+  * {
+    background: #fff !important;
+    color: #111827 !important;
+    box-shadow: none !important;
+  }
+  [class*="border"] {
+    border-color: #d1d5db !important;
   }
 }

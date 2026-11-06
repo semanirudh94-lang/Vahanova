@@ -9,7 +9,6 @@ import {
   Siren,
   FileText,
   History,
-  ShoppingCart,
   User,
   Plus,
   ChevronRight,
@@ -19,28 +18,32 @@ import {
   Navigation,
 } from "lucide-react";
 import AppShell from "@/components/AppShell";
-import { currentUser, myVehicles, addVehicle, bookingsForCustomer, recordsForCustomer } from "@/lib/db";
-import { STATUS_LABEL, STATUS_TINT } from "@/data/services";
+import RateJob from "@/components/RateJob";
+import { currentUser, myVehicles, addVehicle, bookingsForCustomer, recordsForCustomer, ratingsForCustomer } from "@/lib/db";
+import { STATUS_LABEL, STATUS_TINT, VEHICLE_TYPES } from "@/data/services";
+
+const PAY_SHORT = {
+  cash: "Cash collected",
+  upi: "Paid by UPI",
+  unpaid: "Payment pending",
+};
 
 const NAV = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
   { icon: Car, label: "My Vehicles", href: "/dashboard" },
   { icon: Wrench, label: "Book Service", href: "/book" },
   { icon: Siren, label: "Emergency Help", href: "/emergency" },
-  { icon: Navigation, label: "Live Tracking", href: "/track" },
-  { icon: FileText, label: "Documents", href: "/dashboard" },
+  { icon: Navigation, label: "Track a Job", href: "/track" },
+  { icon: FileText, label: "Documents", href: "/passport" },
   { icon: History, label: "Service History", href: "/passport" },
-  { icon: ShoppingCart, label: "Buy Parts", href: "/dashboard" },
   { icon: User, label: "Profile", href: "/dashboard" },
 ];
 
 const QUICK = [
-  { icon: Wrench, title: "Book Your Service", desc: "Repair / General", href: "/book" },
+  { icon: Wrench, title: "Book Your Service", desc: "Compare provider rates", href: "/book" },
   { icon: Fuel, title: "Emergency Help", desc: "Fuel · Towing · Battery", href: "/emergency" },
-  { icon: ShieldCheck, title: "Insurance", desc: "Renewal / Claim", href: "/dashboard" },
-  { icon: FileText, title: "Your Documents", desc: "RC · Insurance · PUC", href: "/dashboard" },
+  { icon: FileText, title: "Your Documents", desc: "RC · Insurance · PUC", href: "/passport" },
   { icon: History, title: "Service History", desc: "All past records", href: "/passport" },
-  { icon: ShoppingCart, title: "Buy Parts", desc: "Genuine & trusted", href: "/dashboard" },
 ];
 
 const inputCls =
@@ -52,8 +55,9 @@ export default function Dashboard() {
   const [vehicles, setVehicles] = useState([]);
   const [bookings, setBookings] = useState([]);
   const [records, setRecords] = useState([]);
+  const [myRatings, setMyRatings] = useState([]);
   const [adding, setAdding] = useState(false);
-  const [form, setForm] = useState({ number: "", brand: "", model: "", year: "" });
+  const [form, setForm] = useState({ number: "", brand: "", model: "", year: "", type: VEHICLE_TYPES[0] });
 
   async function refresh() {
     const u = await currentUser();
@@ -61,6 +65,7 @@ export default function Dashboard() {
     setVehicles(u ? await myVehicles() : []);
     setBookings(u ? await bookingsForCustomer(u.id) : []);
     setRecords(u ? await recordsForCustomer(u.id) : []);
+    setMyRatings(u ? await ratingsForCustomer(u.id) : []);
   }
 
   useEffect(() => {
@@ -70,7 +75,7 @@ export default function Dashboard() {
   async function save() {
     if (!form.number || !form.brand) return;
     await addVehicle(form);
-    setForm({ number: "", brand: "", model: "", year: "" });
+    setForm({ number: "", brand: "", model: "", year: "", type: VEHICLE_TYPES[0] });
     setAdding(false);
     refresh();
   }
@@ -78,6 +83,7 @@ export default function Dashboard() {
   if (!ready) return null;
 
   const active = bookings.filter((b) => !["completed", "cancelled"].includes(b.status));
+  const finished = bookings.filter((b) => b.status === "completed").slice(0, 3);
 
   return (
     <AppShell items={NAV} active="Dashboard">
@@ -114,6 +120,13 @@ export default function Dashboard() {
               </div>
               <div className="flex gap-2">
                 <input className={inputCls} placeholder="Year" value={form.year} onChange={(e) => setForm({ ...form, year: e.target.value })} />
+                <select className={inputCls} value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>
+                  {VEHICLE_TYPES.map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))}
+                </select>
                 <button onClick={save} className="rounded-lg bg-brand-amber px-4 text-sm font-bold text-navy">
                   Save
                 </button>
@@ -123,7 +136,7 @@ export default function Dashboard() {
 
           <div className="mt-4 space-y-2">
             {vehicles.length === 0 && !adding && (
-              <p className="text-sm text-gray-500">Koi vehicle add nahi ki — &ldquo;Add Vehicle&rdquo; dabao.</p>
+              <p className="text-sm text-gray-500">No vehicles yet — use &ldquo;Add Vehicle&rdquo; above.</p>
             )}
             {vehicles.map((v) => (
               <Link
@@ -137,7 +150,7 @@ export default function Dashboard() {
                 <div>
                   <p className="text-sm font-medium">{v.number}</p>
                   <p className="text-xs text-gray-500">
-                    {v.brand} {v.model}
+                    {[v.brand, v.model, v.type].filter(Boolean).join(" · ")}
                   </p>
                 </div>
                 <ChevronRight className="ml-auto h-4 w-4 text-gray-600" />
@@ -172,7 +185,7 @@ export default function Dashboard() {
                   <span className="text-xs text-brand-amber">ETA ~{b.etaMin} min</span>
                 ) : null}
                 <span className="ml-auto inline-flex items-center gap-1 text-xs font-semibold text-brand-blue">
-                  <Navigation className="h-3.5 w-3.5" /> Track live
+                  <Navigation className="h-3.5 w-3.5" /> Track on map
                 </span>
               </Link>
             ))}
@@ -180,9 +193,39 @@ export default function Dashboard() {
         </div>
       )}
 
+      {finished.length > 0 && (
+        <div className="rounded-xl border border-navy-border bg-navy-light p-6">
+          <p className="font-semibold">Rate your finished jobs</p>
+          <p className="mt-1 text-sm text-gray-400">
+            Your stars go on the provider&rsquo;s listing, the same one customers compare before booking.
+          </p>
+          <div className="mt-4 space-y-3">
+            {finished.map((b) => (
+              <div key={b.id} className="rounded-lg bg-navy p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-medium">
+                      {b.service || b.problem} · {b.vehicleNumber || b.kind}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      #{b.code} · {b.date} · {b.mechanicName || "provider"}
+                    </p>
+                  </div>
+                  <RateJob
+                    booking={b}
+                    existing={myRatings.find((x) => x.bookingId === b.id)}
+                    onDone={() => refresh()}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="rounded-xl border border-navy-border bg-navy-light p-6">
         <p className="font-semibold">Quick Services</p>
-        <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+        <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
           {QUICK.map((q) => (
             <Link
               key={q.title}
@@ -209,7 +252,7 @@ export default function Dashboard() {
             <div className="flex items-center gap-3 rounded-lg bg-navy p-3.5">
               <CalendarClock className="h-4 w-4 text-brand-amber" />
               <p className="text-sm text-gray-400">
-                Abhi koi service record nahi — pehli booking complete hone pe yahan dikhega.
+                No service records yet — the first completed booking will appear here.
               </p>
             </div>
           )}
@@ -223,7 +266,8 @@ export default function Dashboard() {
                   {r.service} — {r.vehicleNumber}
                 </p>
                 <p className="text-xs text-gray-500">
-                  {r.date} · ₹{r.total} · {r.warrantyDays}-day warranty
+                  {r.date} · ₹{r.total} billed by {r.mechanicName} · {PAY_SHORT[r.paymentMode] || "Payment not recorded"}
+                  {r.warrantyDays ? ` · ${r.warrantyDays}-day provider warranty` : ""}
                 </p>
               </div>
             </div>

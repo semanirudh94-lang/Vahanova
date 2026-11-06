@@ -2,14 +2,16 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ShieldCheck, Menu, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
+import Brand from "@/components/Brand";
+import InstallButton from "@/components/InstallButton";
 
 const LINKS = [
   { href: "#services", label: "Services" },
   { href: "#how", label: "How it works" },
   { href: "#passport", label: "Vehicle Passport" },
   { href: "#fleets", label: "For Fleets" },
-  { href: "#mechanics", label: "Mechanics" },
+  { href: "#mechanics", label: "For Providers" },
 ];
 
 export default function Navbar() {
@@ -18,11 +20,8 @@ export default function Navbar() {
   return (
     <header className="sticky top-0 z-40 border-b border-white/5 bg-navy/85 backdrop-blur">
       <nav className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
-        <Link href="/" className="flex items-center gap-2">
-          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-amber text-navy">
-            <ShieldCheck className="h-5 w-5" />
-          </span>
-          <span className="text-lg font-bold tracking-tight">VahanProof</span>
+        <Link href="/" className="flex items-center gap-2.5">
+          <Brand />
         </Link>
 
         <div className="hidden items-center gap-7 md:flex">
@@ -38,6 +37,7 @@ export default function Navbar() {
         </div>
 
         <div className="hidden items-center gap-3 md:flex">
+          <InstallButton className="flex items-center gap-1.5 rounded-lg border border-navy-border px-4 py-2 text-sm font-medium text-gray-200 transition hover:border-white/30" />
           <Link
             href="/login"
             className="rounded-lg border border-navy-border px-4 py-2 text-sm font-medium text-gray-200 transition hover:border-white/30"
@@ -73,6 +73,7 @@ export default function Navbar() {
               {l.label}
             </a>
           ))}
+          <InstallButton className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg border border-navy-border px-4 py-2 text-sm font-medium text-gray-200" />
           <div className="mt-2 flex gap-3">
             <Link
               href="/login"

@@ -1,19 +1,27 @@
+// Service catalogue. Deliberately price-free — each service provider publishes their own
+// rate in their rate card, and the customer compares those rates before booking.
 export const SERVICES = [
-  { id: "general", name: "General Service", price: 499, desc: "Engine check, oil change, all adjustments" },
-  { id: "oil", name: "Oil Change", price: 199, desc: "Drain + refill + filter clean" },
-  { id: "brake", name: "Brake Service", price: 349, desc: "Shoes check, adjust, drum clean" },
-  { id: "battery", name: "Battery Check", price: 149, desc: "Terminals, voltage, charging system" },
-  { id: "tyre", name: "Tyre & Puncture", price: 149, desc: "Repair, pressure, wear check" },
-  { id: "chain", name: "Chain & Sprocket", price: 249, desc: "Clean, lube, slack adjust" },
-  { id: "safety", name: "Full Safety Check", price: 0, desc: "25-point inspection, free with service" },
-  { id: "other", name: "Other / Repair", price: 0, desc: "Describe the problem, we will quote" },
+  { key: "general", name: "General Service", desc: "Engine check, oil change, all adjustments" },
+  { key: "oil", name: "Oil Change", desc: "Drain + refill + filter clean" },
+  { key: "brake", name: "Brake Service", desc: "Shoes check, adjust, drum clean" },
+  { key: "battery", name: "Battery Check", desc: "Terminals, voltage, charging system" },
+  { key: "tyre", name: "Tyre & Puncture", desc: "Repair, pressure, wear check" },
+  { key: "chain", name: "Chain & Sprocket", desc: "Clean, lube, slack adjust" },
+  { key: "safety", name: "Full Safety Check", desc: "25-point inspection" },
+  { key: "other", name: "Other / Repair", desc: "Describe the problem, the provider quotes after inspection" },
 ];
+
+export const SERVICE_BY_KEY = Object.fromEntries(SERVICES.map((s) => [s.key, s]));
+
+export const VEHICLE_TYPES = ["Bike", "Scooter", "Car"];
+
+export const SERVICE_MODES = ["Doorstep", "Pickup & drop", "Garage visit"];
 
 export const SLOTS = ["08:00 - 10:00", "10:00 - 12:00", "12:00 - 14:00", "16:00 - 18:00", "18:00 - 20:00"];
 
 export const STATUS_LABEL = {
   pending: "Pending",
-  assigned: "Mechanic assigned",
+  assigned: "Provider accepted",
   on_way: "On the way",
   in_progress: "Service in progress",
   completed: "Completed",

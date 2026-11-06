@@ -4,18 +4,26 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { LayoutDashboard, Inbox, Users, Wrench, IndianRupee, ShieldCheck } from "lucide-react";
 import AppShell from "@/components/AppShell";
-import { allBookings, mechanics, assignBooking, stats } from "@/lib/db";
+import { allBookings, mechanics, assignBooking, stats, currentUser, isLive } from "@/lib/db";
+import { SITE } from "@/data/site";
 import { STATUS_LABEL, STATUS_TINT } from "@/data/services";
 
 const NAV = [
   { icon: LayoutDashboard, label: "Overview", href: "/admin" },
   { icon: Inbox, label: "All Requests", href: "/admin" },
   { icon: Users, label: "Customers", href: "/admin" },
-  { icon: Wrench, label: "Mechanics", href: "/admin" },
+  { icon: Wrench, label: "Providers", href: "/admin" },
 ];
+
+// Firestore rules enforce this too, so a modified browser cannot get past either layer.
+function isAllowed(user) {
+  if (!isLive) return true;
+  return (user.email || "").toLowerCase() === SITE.email.toLowerCase();
+}
 
 export default function Admin() {
   const [ready, setReady] = useState(false);
+  const [user, setUser] = useState(null);
   const [bookings, setBookings] = useState([]);
   const [mechs, setMechs] = useState([]);
   const [totals, setTotals] = useState(null);
@@ -28,21 +36,45 @@ export default function Admin() {
   }
 
   useEffect(() => {
-    refresh().then(() => setReady(true));
+    (async () => {
+      const u = await currentUser();
+      setUser(u);
+      if (u && isAllowed(u)) await refresh();
+      setReady(true);
+    })();
   }, []);
 
   if (!ready) return null;
+
+  if (!user || !isAllowed(user)) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 px-4 text-center">
+        <ShieldCheck className="h-9 w-9 text-brand-amber" />
+        <h1 className="text-xl font-bold">This area is restricted</h1>
+        <p className="max-w-sm text-sm text-gray-400">
+          The dispatch board is only available to the VAHANOVA operator account.
+        </p>
+        <Link
+          href="/login"
+          className="rounded-lg bg-brand-amber px-6 py-3 font-semibold text-navy transition hover:brightness-110"
+        >
+          Sign in
+        </Link>
+      </div>
+    );
+  }
 
   const rows = bookings.filter((b) => filter === "all" || b.status === filter);
 
   return (
     <AppShell items={NAV} active="Dispatch / Admin">
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
         <Card icon={Inbox} label="Total requests" value={totals.bookings} />
         <Card icon={ShieldCheck} label="Open" value={totals.open} tint="text-brand-amber bg-brand-amber/10" />
         <Card icon={Users} label="Customers" value={totals.customers} />
-        <Card icon={Wrench} label="Mechanics" value={totals.mechanics} />
-        <Card icon={IndianRupee} label="Billed value" value={`₹${totals.revenue}`} tint="text-green-400 bg-green-500/10" />
+        <Card icon={Wrench} label="Providers" value={totals.mechanics} />
+        <Card icon={IndianRupee} label="Billed by providers" value={`₹${totals.billed}`} tint="text-green-400 bg-green-500/10" />
+        <Card icon={ShieldCheck} label="VAHANOVA commission" value="₹0" />
       </div>
 
       <div className="rounded-xl border border-navy-border bg-navy-light p-6">
@@ -80,7 +112,7 @@ export default function Admin() {
               {rows.length === 0 && (
                 <tr>
                   <td colSpan={7} className="py-6 text-center text-gray-500">
-                    Abhi koi request nahi — /book ya /emergency se banao.
+                    No requests yet.
                   </td>
                 </tr>
               )}
@@ -122,21 +154,25 @@ export default function Admin() {
       </div>
 
       <div className="rounded-xl border border-navy-border bg-navy-light p-6">
-        <p className="font-semibold">Mechanic Pool</p>
+        <p className="font-semibold">Provider Pool</p>
+        {mechs.length === 0 && (
+          <p className="mt-4 text-sm text-gray-500">No providers have signed up yet.</p>
+        )}
         <div className="mt-4 grid gap-3 sm:grid-cols-3">
           {mechs.map((m) => (
             <div key={m.id} className="rounded-lg bg-navy p-4">
               <p className="font-medium">{m.name}</p>
-              <p className="text-xs text-gray-500">{m.area}</p>
+              <p className="text-xs text-gray-500">{m.area || "Area not set"}</p>
               <p className="mt-2 text-xs text-gray-400">
-                {m.jobs} jobs · {m.rating} rating
+                {m.jobs || 0} job{m.jobs === 1 ? "" : "s"} completed
               </p>
             </div>
           ))}
         </div>
         <p className="mt-4 text-xs text-gray-500">
-          Ye page abhi public hai — Month 2 me role-based auth (founder only) lagega. Live deploy se
-          pehle isse password-protect karna zaroori hai.
+          This board is limited to the VAHANOVA operator account. The matching database-level lock lives in
+          <code className="mx-1 rounded bg-navy px-1.5 py-0.5">firestore.rules</code>
+          and is only enforced once those rules are deployed in the Firebase console.
         </p>
         <Link href="/dashboard" className="mt-4 inline-block text-sm text-brand-blue">
           Back to customer view

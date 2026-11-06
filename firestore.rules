@@ -1,0 +1,101 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // The only operator account. Keep this in sync with data/site.js.
+    function isOwner() {
+      return signedIn() && request.auth.token.email == 'semanirudh@gmail.com';
+    }
+
+    function isMechanic() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'mechanic';
+    }
+
+    function vehicleOwner(id) {
+      return exists(/databases/$(database)/documents/vehicles/$(id))
+        && get(/databases/$(database)/documents/vehicles/$(id)).data.ownerId == request.auth.uid;
+    }
+
+    // Accounts: only the person they belong to, plus the operator.
+    match /users/{id} {
+      allow get, list: if signedIn() && (request.auth.uid == id || isOwner());
+      allow create, update: if signedIn() && request.auth.uid == id;
+      allow delete: if isOwner();
+    }
+
+    // Rate cards are the shop window: every signed-in customer reads them,
+    // nobody but the provider who owns one can write it.
+    match /providers/{id} {
+      allow get, list: if signedIn();
+      allow create, update: if signedIn() && request.auth.uid == id;
+      allow delete: if isOwner();
+    }
+
+    match /vehicles/{id} {
+      allow get, list: if signedIn() && resource.data.ownerId == request.auth.uid;
+      allow create: if signedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow update, delete: if signedIn() && resource.data.ownerId == request.auth.uid;
+    }
+
+    match /bookings/{id} {
+      allow get, list: if isOwner()
+        || (signedIn() && (resource.data.customerId == request.auth.uid || resource.data.mechanicId == request.auth.uid))
+        || (isMechanic() && resource.data.mechanicId == null && resource.data.status == 'pending');
+
+      allow create: if signedIn()
+        && request.resource.data.customerId == request.auth.uid;
+
+      // A customer may move their own job forward (cancel, confirm) but cannot
+      // re-assign it or rewrite the provider's price.
+      allow update: if isOwner()
+        || (signedIn()
+            && resource.data.customerId == request.auth.uid
+            && request.resource.data.customerId == resource.data.customerId
+            && request.resource.data.mechanicId == resource.data.mechanicId
+            && request.resource.data.amount == resource.data.amount)
+        || (isMechanic()
+            && (resource.data.mechanicId == request.auth.uid || resource.data.mechanicId == null)
+            && request.resource.data.customerId == resource.data.customerId);
+    }
+
+    // A job record is written by the provider who did the work and read by the
+    // vehicle's owner. Providers cannot rewrite history once it is saved.
+    match /records/{id} {
+      allow get, list: if isOwner()
+        || (signedIn() && resource.data.mechanicId == request.auth.uid)
+        || (signedIn() && vehicleOwner(resource.data.vehicleId));
+
+      allow create: if isMechanic() && request.resource.data.mechanicId == request.auth.uid;
+      allow update, delete: if isOwner();
+    }
+
+    // One review per completed job, written by the customer it belongs to and
+    // never edited afterwards — the doc id is the booking id.
+    match /ratings/{id} {
+      allow get, list: if signedIn();
+
+      allow create: if signedIn()
+        && request.resource.data.customerId == request.auth.uid
+        && request.resource.data.bookingId == id
+        && exists(/databases/$(database)/documents/bookings/$(id))
+        && get(/databases/$(database)/documents/bookings/$(id)).data.customerId == request.auth.uid
+        && get(/databases/$(database)/documents/bookings/$(id)).data.status == 'completed';
+
+      allow update, delete: if isOwner();
+    }
+
+    // Booking code counter (VP####). Shared, so any signed-in account may bump it;
+    // moving this behind a Cloud Function is the proper fix.
+    match /meta/{id} {
+      allow get, list: if signedIn();
+      allow write: if signedIn();
+    }
+  }
+}
