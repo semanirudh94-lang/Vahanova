@@ -43,7 +43,7 @@ export function RoleTabs({ role, onChange, disabled }) {
 }
 
 // Both auth screens need the same frame, or their styles drift apart.
-export default function AuthShell({ title, subtitle, role, onRole, google, children, footer }) {
+export default function AuthShell({ title, subtitle, role, onRole, google, waiting, children, footer }) {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center px-4 py-12">
       <Link href="/" className="mb-8 flex items-center gap-3">
@@ -54,25 +54,34 @@ export default function AuthShell({ title, subtitle, role, onRole, google, child
         <h1 className="text-xl font-bold">{title}</h1>
         <p className="mt-1 text-sm text-gray-400">{subtitle}</p>
 
-        <RoleTabs role={role} onChange={onRole} disabled={google?.disabled} />
-
-        {children}
-
-        {google && isLive && (
+        {waiting ? (
+          <div className="mt-6 flex items-center gap-3 rounded-lg border border-navy-border bg-navy px-4 py-4 text-sm text-gray-300">
+            <span className="h-5 w-5 shrink-0 animate-spin rounded-full border-2 border-navy-border border-t-brand-amber" />
+            Finishing your Google sign-in…
+          </div>
+        ) : (
           <>
-            <div className="my-5 flex items-center gap-3 text-[11px] uppercase tracking-wide text-gray-500">
-              <span className="h-px flex-1 bg-navy-border" />
-              or
-              <span className="h-px flex-1 bg-navy-border" />
-            </div>
-            <button
-              type="button"
-              onClick={google.onClick}
-              disabled={google.disabled}
-              className="flex w-full items-center justify-center gap-2 rounded-lg border border-navy-border py-3 text-sm font-medium text-gray-200 transition hover:border-white/30 disabled:opacity-60"
-            >
-              <GoogleG /> {google.label}
-            </button>
+            <RoleTabs role={role} onChange={onRole} disabled={google?.disabled} />
+
+            {children}
+
+            {google && isLive && (
+              <>
+                <div className="my-5 flex items-center gap-3 text-[11px] uppercase tracking-wide text-gray-500">
+                  <span className="h-px flex-1 bg-navy-border" />
+                  or
+                  <span className="h-px flex-1 bg-navy-border" />
+                </div>
+                <button
+                  type="button"
+                  onClick={google.onClick}
+                  disabled={google.disabled}
+                  className="flex w-full items-center justify-center gap-2 rounded-lg border border-navy-border py-3 text-sm font-medium text-gray-200 transition hover:border-white/30 disabled:opacity-60"
+                >
+                  <GoogleG /> {google.label}
+                </button>
+              </>
+            )}
           </>
         )}
 

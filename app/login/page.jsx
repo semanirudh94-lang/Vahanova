@@ -16,7 +16,7 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [notice, setNotice] = useState("");
-  const { router, busy, setBusy, error, setError, startGoogle } = useGoogleAuth(role);
+  const { router, busy, setBusy, waiting, error, setError, startGoogle } = useGoogleAuth(role);
 
   async function submit(e) {
     e.preventDefault();
@@ -69,6 +69,7 @@ export default function Login() {
       }
       role={role}
       onRole={setRole}
+      waiting={waiting}
       google={{ onClick: startGoogle, disabled: busy, label: "Continue with Google" }}
       footer={
         <p className="mt-4 text-center text-sm text-gray-400">

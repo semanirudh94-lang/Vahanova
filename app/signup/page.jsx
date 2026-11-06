@@ -16,7 +16,7 @@ export default function Signup() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
-  const { router, busy, setBusy, error, setError, startGoogle } = useGoogleAuth(role);
+  const { router, busy, setBusy, waiting, error, setError, startGoogle } = useGoogleAuth(role);
 
   // /signup?role=mechanic preselects the tab for provider links. Read off the URL
   // after mount rather than useSearchParams, which would block static generation.
@@ -61,6 +61,7 @@ export default function Signup() {
       }
       role={role}
       onRole={setRole}
+      waiting={waiting}
       google={{ onClick: startGoogle, disabled: busy, label: "Sign up with Google" }}
       footer={
         <p className="mt-4 text-center text-sm text-gray-400">
