@@ -33,16 +33,32 @@ service cloud.firestore {
             .hasOnly(['name', 'phone', 'area', 'coord', 'upi']));
       allow delete: if isOwner();
     }
-    match /providers/{id} {
+    match /publicProviders/{id} {
       allow get, list: if signedIn();
       allow create: if isMechanic() && request.auth.uid == id
         && request.resource.data.keys().hasOnly([
-          'name', 'phone', 'area', 'coord', 'upi', 'vehicleTypes', 'services', 'active', 'updatedAt'
+          'name', 'area', 'vehicleTypes', 'services', 'active', 'updatedAt'
         ]);
       allow update: if isMechanic() && request.auth.uid == id
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          'name', 'phone', 'area', 'coord', 'upi', 'vehicleTypes', 'services', 'active', 'updatedAt'
+          'name', 'area', 'vehicleTypes', 'services', 'active', 'updatedAt'
         ]);
+      allow delete: if isOwner();
+    }
+    match /providerPrivate/{id} {
+      allow get: if isOwner() || (signedIn() && request.auth.uid == id);
+      allow list: if false;
+      allow create: if isMechanic() && request.auth.uid == id
+        && request.resource.data.keys().hasOnly(['phone', 'coord', 'upi', 'updatedAt']);
+      allow update: if isMechanic() && request.auth.uid == id
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['phone', 'coord', 'upi', 'updatedAt']);
+      allow delete: if isOwner();
+    }
+    // Legacy documents may contain private fields; never expose them publicly.
+    match /providers/{id} {
+      allow get: if isOwner() || (signedIn() && request.auth.uid == id);
+      allow list: if isOwner();
+      allow create, update: if false;
       allow delete: if isOwner();
     }
     match /vehicles/{id} {
@@ -65,7 +81,7 @@ service cloud.firestore {
           && existsAfter(/databases/$(database)/documents/openRequests/$(id))
           && getAfter(/databases/$(database)/documents/openRequests/$(id)).data.bookingId == id)
           || (request.resource.data.mechanicId is string
-            && exists(/databases/$(database)/documents/providers/$(request.resource.data.mechanicId))
+            && exists(/databases/$(database)/documents/publicProviders/$(request.resource.data.mechanicId))
             && request.resource.data.status == 'assigned'));
       allow update: if isOwner()
         || (signedIn() && resource.data.customerId == request.auth.uid
@@ -97,6 +113,16 @@ service cloud.firestore {
             'mechanicArea', 'mechanicJobs', 'mechanicUpi', 'mechanicCoord', 'history'
           ])
           && exists(/databases/$(database)/documents/openRequests/$(id)))
+        || (isMechanic() && resource.data.mechanicId == request.auth.uid
+          && request.resource.data.mechanicId == resource.data.mechanicId
+          && request.resource.data.customerId == resource.data.customerId
+          && resource.data.status in ['assigned', 'on_way', 'in_progress']
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'mechanicName', 'mechanicPhone', 'mechanicArea', 'mechanicJobs', 'mechanicUpi', 'mechanicCoord'
+          ])
+          && request.resource.data.mechanicName is string
+          && request.resource.data.mechanicPhone is string
+          && request.resource.data.mechanicUpi is string)
         || (isMechanic() && resource.data.mechanicId == request.auth.uid
           && request.resource.data.mechanicId == resource.data.mechanicId
           && request.resource.data.customerId == resource.data.customerId
