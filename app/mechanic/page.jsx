@@ -256,7 +256,7 @@ export default function Mechanic() {
         <div className="mt-4 space-y-3">
           {openPool.length === 0 && <p className="text-sm text-gray-400">No open requests right now. New requests will appear here automatically.</p>}
           {openPool.map((b) => (
-            <JobRow key={b.id} b={b}>
+            <JobRow key={b.id} b={b} isOpenRequest>
               <button
                 onClick={async () => {
                   const accepted = await acceptBooking(b.id, user.id);
@@ -576,7 +576,7 @@ export default function Mechanic() {
   );
 }
 
-function JobRow({ b, children }) {
+function JobRow({ b, children, isOpenRequest = false }) {
   return (
     <div className="flex flex-wrap items-center gap-3 rounded-lg bg-navy p-4">
       <span className={`rounded-full px-3 py-1 text-xs font-medium ${STATUS_TINT[b.status]}`}>{STATUS_LABEL[b.status]}</span>
@@ -585,12 +585,12 @@ function JobRow({ b, children }) {
           {b.service || b.problem} · {b.vehicleNumber || b.kind}
         </p>
         <p className="text-xs text-gray-500">
-          #{b.code} · {b.customerName} · {b.address || "no address"} · {b.date}
+          #{b.code} · {isOpenRequest ? "Customer details shared after acceptance" : `${b.customerName} · ${b.address || "no address"}`} · {b.date}
           {b.slot && ` ${b.slot}`}
         </p>
       </div>
       <div className="ml-auto flex items-center gap-2">
-        {b.customerPhone && (
+        {!isOpenRequest && b.customerPhone && (
           <a href={`tel:${b.customerPhone}`} className="rounded-lg border border-navy-border px-3 py-2 text-xs text-gray-300">
             Call customer
           </a>
