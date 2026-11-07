@@ -2,102 +2,113 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    function signedIn() {
-      return request.auth != null;
-    }
-
-    // The only operator account. Keep this in sync with data/site.js.
+    function signedIn() { return request.auth != null; }
     function isOwner() {
       return signedIn() && request.auth.token.email == 'semanirudh@gmail.com';
     }
-
     function isMechanic() {
       return signedIn()
         && exists(/databases/$(database)/documents/users/$(request.auth.uid))
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'mechanic';
     }
-
     function vehicleOwner(id) {
       return exists(/databases/$(database)/documents/vehicles/$(id))
         && get(/databases/$(database)/documents/vehicles/$(id)).data.ownerId == request.auth.uid;
     }
-
-    // Accounts: only the person they belong to, plus the operator.
     match /users/{id} {
       allow get, list: if signedIn() && (request.auth.uid == id || isOwner());
-      allow create, update: if signedIn() && request.auth.uid == id;
+      allow create: if signedIn() && request.auth.uid == id
+        && request.resource.data.role in ['customer', 'mechanic']
+        && request.resource.data.email == request.auth.token.email;
+      allow update: if signedIn() && request.auth.uid == id
+        && request.resource.data.role == resource.data.role
+        && request.resource.data.email == resource.data.email
+        && request.resource.data.jobs == resource.data.jobs
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['name', 'phone', 'area', 'coord', 'upi']);
       allow delete: if isOwner();
     }
-
-    // Rate cards are the shop window: every signed-in customer reads them,
-    // nobody but the provider who owns one can write it.
     match /providers/{id} {
       allow get, list: if signedIn();
-      allow create, update: if signedIn() && request.auth.uid == id;
+      allow create, update: if isMechanic() && request.auth.uid == id
+        && request.resource.data.diff(resource == null ? {} : resource.data).affectedKeys()
+          .hasOnly(['name', 'phone', 'area', 'coord', 'upi', 'vehicleTypes', 'services', 'active', 'updatedAt']);
       allow delete: if isOwner();
     }
-
     match /vehicles/{id} {
       allow get, list: if signedIn() && resource.data.ownerId == request.auth.uid;
       allow create: if signedIn() && request.resource.data.ownerId == request.auth.uid;
-      allow update, delete: if signedIn() && resource.data.ownerId == request.auth.uid;
+      allow update, delete: if signedIn() && resource.data.ownerId == request.auth.uid
+        && request.resource.data.ownerId == resource.data.ownerId;
     }
-
     match /bookings/{id} {
       allow get, list: if isOwner()
         || (signedIn() && (resource.data.customerId == request.auth.uid || resource.data.mechanicId == request.auth.uid))
         || (isMechanic() && resource.data.mechanicId == null && resource.data.status == 'pending');
-
       allow create: if signedIn()
-        && request.resource.data.customerId == request.auth.uid;
-
-      // A customer may move their own job forward (cancel, confirm) but cannot
-      // re-assign it or rewrite the provider's price.
+        && request.resource.data.customerId == request.auth.uid
+        && ((request.resource.data.mechanicId == null && request.resource.data.status == 'pending')
+          || (request.resource.data.mechanicId is string
+            && exists(/databases/$(database)/documents/providers/$(request.resource.data.mechanicId))
+            && request.resource.data.status == 'assigned'));
       allow update: if isOwner()
-        || (signedIn()
-            && resource.data.customerId == request.auth.uid
-            && request.resource.data.customerId == resource.data.customerId
-            && request.resource.data.mechanicId == resource.data.mechanicId
-            && request.resource.data.amount == resource.data.amount)
-        || (isMechanic()
-            && (resource.data.mechanicId == request.auth.uid || resource.data.mechanicId == null)
-            && request.resource.data.customerId == resource.data.customerId);
+        || (signedIn() && resource.data.customerId == request.auth.uid
+          && request.resource.data.customerId == resource.data.customerId
+          && request.resource.data.mechanicId == resource.data.mechanicId
+          && request.resource.data.amount == resource.data.amount
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'history'])
+          && request.resource.data.status == 'cancelled')
+        || (isMechanic() && resource.data.mechanicId == null && resource.data.status == 'pending'
+          && request.resource.data.mechanicId == request.auth.uid
+          && request.resource.data.status == 'assigned'
+          && request.resource.data.customerId == resource.data.customerId
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'mechanicId', 'status', 'etaMin', 'mechanicName', 'mechanicPhone',
+            'mechanicArea', 'mechanicJobs', 'mechanicUpi', 'mechanicCoord', 'history'
+          ]))
+        || (isMechanic() && resource.data.mechanicId == request.auth.uid
+          && request.resource.data.mechanicId == resource.data.mechanicId
+          && request.resource.data.customerId == resource.data.customerId
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'history', 'amount'])
+          && ((resource.data.status == 'assigned' && request.resource.data.status == 'on_way')
+            || (resource.data.status == 'on_way' && request.resource.data.status == 'in_progress')
+            || (resource.data.status == 'in_progress' && request.resource.data.status == 'completed'
+              && existsAfter(/databases/$(database)/documents/records/$(id))
+              && getAfter(/databases/$(database)/documents/records/$(id)).data.mechanicId == request.auth.uid
+              && getAfter(/databases/$(database)/documents/records/$(id)).data.bookingId == id));
     }
-
-    // A job record is written by the provider who did the work and read by the
-    // customer it belongs to (customerId is stored on the record so list queries
-    // are provable) or the vehicle's owner. Providers cannot rewrite history.
     match /records/{id} {
       allow get, list: if isOwner()
         || (signedIn() && resource.data.customerId == request.auth.uid)
         || (signedIn() && resource.data.mechanicId == request.auth.uid)
         || (signedIn() && vehicleOwner(resource.data.vehicleId));
-
-      allow create: if isMechanic() && request.resource.data.mechanicId == request.auth.uid;
+      allow create: if isMechanic()
+        && request.resource.data.mechanicId == request.auth.uid
+        && request.resource.data.bookingId == id
+        && existsAfter(/databases/$(database)/documents/bookings/$(id))
+        && getAfter(/databases/$(database)/documents/bookings/$(id)).data.status == 'completed'
+        && getAfter(/databases/$(database)/documents/bookings/$(id)).data.mechanicId == request.auth.uid
+        && getAfter(/databases/$(database)/documents/bookings/$(id)).data.customerId == request.resource.data.customerId;
       allow update, delete: if isOwner();
     }
-
-    // One review per completed job, written by the customer it belongs to and
-    // never edited afterwards — the doc id is the booking id.
     match /ratings/{id} {
       allow get, list: if signedIn();
-
       allow create: if signedIn()
         && request.resource.data.customerId == request.auth.uid
         && request.resource.data.bookingId == id
         && exists(/databases/$(database)/documents/bookings/$(id))
         && get(/databases/$(database)/documents/bookings/$(id)).data.customerId == request.auth.uid
         && get(/databases/$(database)/documents/bookings/$(id)).data.status == 'completed';
-
       allow update, delete: if isOwner();
     }
-
-    // Booking code counter (VP####). Shared, so any signed-in account may bump it;
-    // moving this behind a Cloud Function is the proper fix.
     match /meta/{id} {
       allow get, list: if signedIn();
-      allow write: if signedIn();
+      allow create: if signedIn() && request.resource.data.keys().hasOnly(['n'])
+        && request.resource.data.n == 1001;
+      allow update: if signedIn()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['n'])
+        && request.resource.data.n == resource.data.n + 1;
+      allow delete: if isOwner();
     }
   }
 }
