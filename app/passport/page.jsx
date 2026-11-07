@@ -1,6 +1,8 @@
 "use client";
 
+
 import Link from "next/link";
+import ScreenWait from "@/components/ScreenWait";
 import { useEffect, useState } from "react";
 import {
   LayoutDashboard,
@@ -18,7 +20,7 @@ import {
   MessageCircle,
 } from "lucide-react";
 import AppShell from "@/components/AppShell";
-import { currentUser, myVehicles, recordsForVehicle, ratingsForCustomer } from "@/lib/db";
+import { currentUser, myVehicles, recordsForCustomer, ratingsForCustomer } from "@/lib/db";
 import { upiLink } from "@/lib/geo";
 import { WA_LINK } from "@/data/site";
 
@@ -42,31 +44,28 @@ export default function Passport() {
   const [ready, setReady] = useState(false);
   const [vehicles, setVehicles] = useState([]);
   const [vid, setVid] = useState("");
-  const [records, setRecords] = useState([]);
+  const [allRecords, setAllRecords] = useState([]);
   const [myRatings, setMyRatings] = useState([]);
 
   useEffect(() => {
     (async () => {
-      const vs = await myVehicles();
-      const u = await currentUser();
-      setMyRatings(u ? await ratingsForCustomer(u.id) : []);
-      setVehicles(vs);
-      const q = new URLSearchParams(window.location.search).get("vid");
-      setVid(q && vs.some((v) => v.id === q) ? q : vs[0]?.id || "");
-      setReady(true);
+      try {
+        const vs = await myVehicles();
+        const u = await currentUser();
+        setMyRatings(u ? await ratingsForCustomer(u.id) : []);
+        setAllRecords(u ? await recordsForCustomer(u.id) : []);
+        setVehicles(vs);
+        const q = new URLSearchParams(window.location.search).get("vid");
+        setVid(q && vs.some((v) => v.id === q) ? q : vs[0]?.id || "");
+      } finally {
+        setReady(true);
+      }
     })();
   }, []);
 
-  useEffect(() => {
-    if (!vid) {
-      setRecords([]);
-      return;
-    }
-    recordsForVehicle(vid).then(setRecords);
-  }, [vid]);
+  if (!ready) return <ScreenWait />;
 
-  if (!ready) return null;
-
+  const records = allRecords.filter((r) => r.vehicleId === vid);
   const vehicle = vehicles.find((v) => v.id === vid);
   const spent = records.reduce((s, r) => s + (r.total || 0), 0);
   const inWarranty = records.find((r) => new Date(r.date).getTime() + r.warrantyDays * 864e5 > Date.now());

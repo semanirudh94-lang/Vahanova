@@ -1,6 +1,8 @@
 "use client";
 
+
 import Link from "next/link";
+import ScreenWait from "@/components/ScreenWait";
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import { ArrowLeft, ArrowRight, CheckCircle2, Car, CalendarClock, SlidersHorizontal } from "lucide-react";
@@ -43,11 +45,14 @@ export default function Book() {
 
   useEffect(() => {
     (async () => {
-      const u = await currentUser();
-      setUser(u);
-      if (u?.phone) setContact(u.phone);
-      setVehicles(await myVehicles());
-      setReady(true);
+      try {
+        const u = await currentUser();
+        setUser(u);
+        if (u?.phone) setContact(u.phone);
+        setVehicles(await myVehicles());
+      } finally {
+        setReady(true);
+      }
     })();
   }, []);
 
@@ -106,7 +111,7 @@ export default function Book() {
     setDone({ ...b, providerName: pick.name, providerPhone: pick.phone, providerArea: pick.area });
   }
 
-  if (!ready) return null;
+  if (!ready) return <ScreenWait />;
 
   if (!user) {
     return (

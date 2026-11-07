@@ -1,9 +1,11 @@
 "use client";
 
+
 import Link from "next/link";
+import ScreenWait from "@/components/ScreenWait";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { currentUser, updateProfile } from "@/lib/db";
+import { currentUser, logout, updateProfile } from "@/lib/db";
 import Brand from "@/components/Brand";
 
 const inputCls =
@@ -20,17 +22,20 @@ export default function Profile() {
 
   useEffect(() => {
     (async () => {
-      const u = await currentUser();
-      setUser(u);
-      if (u) {
-        setName(u.name || "");
-        setPhone(u.phone || "");
+      try {
+        const u = await currentUser();
+        setUser(u);
+        if (u) {
+          setName(u.name || "");
+          setPhone(u.phone || "");
+        }
+      } finally {
+        setReady(true);
       }
-      setReady(true);
     })();
   }, []);
 
-  if (!ready) return null;
+  if (!ready) return <ScreenWait />;
 
   if (!user) {
     return (
@@ -106,9 +111,18 @@ export default function Profile() {
           </button>
         </form>
 
-        <Link href="/" className="mt-4 block text-center text-xs text-gray-500 hover:text-gray-300">
-          Skip for now
-        </Link>
+        {/* A name is required to use the app, so the only honest exit here is to
+            leave this account and sign in with the right one. */}
+        <button
+          type="button"
+          onClick={async () => {
+            await logout();
+            router.push("/login");
+          }}
+          className="mt-4 w-full text-center text-xs text-gray-500 underline hover:text-gray-300"
+        >
+          Wrong account? Sign out and use a different one
+        </button>
       </div>
     </div>
   );

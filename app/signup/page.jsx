@@ -44,7 +44,7 @@ export default function Signup() {
     try {
       if (isLive) await signUpEmailPassword(details.email, password);
       const u = await login(details);
-      router.push(u?.name ? (role === "mechanic" ? "/mechanic" : "/dashboard") : "/profile");
+      router.push(u?.name ? (u.role === "mechanic" ? "/mechanic" : "/dashboard") : "/profile");
     } catch (err) {
       setError(friendlyAuthError(err));
       setBusy(false);
@@ -116,7 +116,7 @@ export default function Signup() {
           disabled={busy}
           className="w-full rounded-lg bg-brand-amber py-3 font-semibold text-navy transition hover:brightness-110 disabled:opacity-60"
         >
-          {role === "mechanic" ? "Create provider account" : "Create customer account"}
+          {busy ? "Creating account…" : role === "mechanic" ? "Create provider account" : "Create customer account"}
         </button>
       </form>
     </AuthShell>

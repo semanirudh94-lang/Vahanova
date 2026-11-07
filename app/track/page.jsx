@@ -1,6 +1,8 @@
 "use client";
 
+
 import Link from "next/link";
+import ScreenWait from "@/components/ScreenWait";
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -62,13 +64,16 @@ export default function Track() {
 
   useEffect(() => {
     (async () => {
-      const u = await currentUser();
-      setUser(u);
-      const q = new URLSearchParams(window.location.search).get("b");
-      const list = u ? await bookingsForCustomer(u.id) : [];
-      setMine(list);
-      setCode(q || (list.find((b) => !["completed", "cancelled"].includes(b.status)) || list[0] || {}).code || null);
-      setReady(true);
+      try {
+        const u = await currentUser();
+        setUser(u);
+        const q = new URLSearchParams(window.location.search).get("b");
+        const list = u ? await bookingsForCustomer(u.id) : [];
+        setMine(list);
+        setCode(q || (list.find((b) => !["completed", "cancelled"].includes(b.status)) || list[0] || {}).code || null);
+      } finally {
+        setReady(true);
+      }
     })();
 
     const t = setInterval(() => setTick((n) => n + 1), 5000);
@@ -131,7 +136,7 @@ export default function Track() {
     };
   }, [pair]);
 
-  if (!ready) return null;
+  if (!ready) return <ScreenWait />;
 
   const stageIdx = booking ? STAGES.findIndex((s) => s.key === booking.status) : -1;
 

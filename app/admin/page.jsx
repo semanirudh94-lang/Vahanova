@@ -1,6 +1,8 @@
 "use client";
 
+
 import Link from "next/link";
+import ScreenWait from "@/components/ScreenWait";
 import { useEffect, useState } from "react";
 import { LayoutDashboard, Inbox, Users, Wrench, IndianRupee, ShieldCheck } from "lucide-react";
 import AppShell from "@/components/AppShell";
@@ -37,14 +39,17 @@ export default function Admin() {
 
   useEffect(() => {
     (async () => {
-      const u = await currentUser();
-      setUser(u);
-      if (u && isAllowed(u)) await refresh();
-      setReady(true);
+      try {
+        const u = await currentUser();
+        setUser(u);
+        if (u && isAllowed(u)) await refresh();
+      } finally {
+        setReady(true);
+      }
     })();
   }, []);
 
-  if (!ready) return null;
+  if (!ready) return <ScreenWait />;
 
   if (!user || !isAllowed(user)) {
     return (

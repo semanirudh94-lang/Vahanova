@@ -24,7 +24,7 @@ export default function Login() {
       setError("Please enter a valid email address.");
       return;
     }
-    if (isLive && password.length < 6) {
+    if (isLive && !password) {
       setError("Please enter your password.");
       return;
     }
@@ -34,7 +34,8 @@ export default function Login() {
     try {
       if (isLive) await signInEmailPassword(details.email, password);
       const u = await login(details);
-      router.push(u?.name ? (role === "mechanic" ? "/mechanic" : "/dashboard") : "/profile");
+      // Land them where their account actually lives, not where the tab guessed.
+      router.push(u?.name ? (u.role === "mechanic" ? "/mechanic" : "/dashboard") : "/profile");
     } catch (err) {
       setError(friendlyAuthError(err));
       setBusy(false);
@@ -74,8 +75,11 @@ export default function Login() {
       footer={
         <p className="mt-4 text-center text-sm text-gray-400">
           First time here?{" "}
-          <Link href="/signup" className="font-medium text-brand-blue underline">
-            Create an account
+          <Link
+            href={role === "mechanic" ? "/signup?role=mechanic" : "/signup"}
+            className="font-medium text-brand-blue underline"
+          >
+            {role === "mechanic" ? "Create a provider account" : "Create an account"}
           </Link>
         </p>
       }
@@ -103,7 +107,7 @@ export default function Login() {
               disabled={busy}
               className="mt-2 text-xs text-brand-blue underline disabled:opacity-60"
             >
-              Forgot password? Send a reset link
+              {busy ? "Sending reset link…" : "Forgot password? Send a reset link"}
             </button>
           </div>
         )}
@@ -114,7 +118,7 @@ export default function Login() {
           disabled={busy}
           className="w-full rounded-lg bg-brand-amber py-3 font-semibold text-navy transition hover:brightness-110 disabled:opacity-60"
         >
-          {role === "mechanic" ? "Sign in as Service Provider" : "Sign in as Customer"}
+          {busy ? "Signing in…" : role === "mechanic" ? "Sign in as Service Provider" : "Sign in as Customer"}
         </button>
       </form>
     </AuthShell>

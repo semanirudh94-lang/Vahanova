@@ -66,9 +66,11 @@ service cloud.firestore {
     }
 
     // A job record is written by the provider who did the work and read by the
-    // vehicle's owner. Providers cannot rewrite history once it is saved.
+    // customer it belongs to (customerId is stored on the record so list queries
+    // are provable) or the vehicle's owner. Providers cannot rewrite history.
     match /records/{id} {
       allow get, list: if isOwner()
+        || (signedIn() && resource.data.customerId == request.auth.uid)
         || (signedIn() && resource.data.mechanicId == request.auth.uid)
         || (signedIn() && vehicleOwner(resource.data.vehicleId));
 

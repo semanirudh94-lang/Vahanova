@@ -1,6 +1,8 @@
 "use client";
 
+
 import Link from "next/link";
+import ScreenWait from "@/components/ScreenWait";
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import {
@@ -85,19 +87,31 @@ export default function Mechanic() {
   }
 
   useEffect(() => {
-    refresh().then(() => setReady(true));
+    refresh().catch(() => {}).finally(() => setReady(true));
   }, []);
 
-  if (!ready) return null;
+  if (!ready) return <ScreenWait />;
 
   if (user?.role !== "mechanic") {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 px-4 text-center">
         <h1 className="text-2xl font-bold">This is the service provider dashboard</h1>
-        <p className="text-sm text-gray-400">Select &ldquo;Service Provider&rdquo; when you sign in.</p>
-        <Link href="/login" className="rounded-lg bg-brand-amber px-6 py-3 font-semibold text-navy">
-          Sign in as Service Provider
-        </Link>
+        <p className="max-w-md text-sm text-gray-400">
+          {user?.email
+            ? `${user.email} is a customer account, so it cannot open the jobs desk. Provider access is chosen when an account is created.`
+            : "Provider access is chosen when an account is created."}
+        </p>
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          <Link href="/signup?role=mechanic" className="rounded-lg bg-brand-amber px-6 py-3 font-semibold text-navy">
+            Create a provider account
+          </Link>
+          <Link
+            href="/dashboard"
+            className="rounded-lg border border-navy-border px-6 py-3 text-sm font-medium text-gray-200 hover:border-white/30"
+          >
+            Open my customer dashboard
+          </Link>
+        </div>
       </div>
     );
   }

@@ -1,6 +1,8 @@
 "use client";
 
+
 import Link from "next/link";
+import ScreenWait from "@/components/ScreenWait";
 import { useEffect, useState } from "react";
 import {
   LayoutDashboard,
@@ -69,7 +71,7 @@ export default function Dashboard() {
   }
 
   useEffect(() => {
-    refresh().then(() => setReady(true));
+    refresh().catch(() => {}).finally(() => setReady(true));
   }, []);
 
   async function save() {
@@ -80,7 +82,7 @@ export default function Dashboard() {
     refresh();
   }
 
-  if (!ready) return null;
+  if (!ready) return <ScreenWait />;
 
   const active = bookings.filter((b) => !["completed", "cancelled"].includes(b.status));
   const finished = bookings.filter((b) => b.status === "completed").slice(0, 3);

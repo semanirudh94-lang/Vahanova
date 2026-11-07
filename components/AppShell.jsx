@@ -7,6 +7,7 @@ import { LogOut } from "lucide-react";
 import { currentUser, logout } from "@/lib/db";
 import WhatsAppFloat from "@/components/WhatsAppFloat";
 import Brand from "@/components/Brand";
+import ScreenWait from "@/components/ScreenWait";
 
 export default function AppShell({ items, active, children }) {
   const router = useRouter();
@@ -14,17 +15,23 @@ export default function AppShell({ items, active, children }) {
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    currentUser().then((u) => {
-      setUser(u);
-      setLoaded(true);
-      if (u && !u.name) router.replace("/profile");
-    });
+    currentUser()
+      .then((u) => {
+        setUser(u);
+        setLoaded(true);
+        if (u && !u.name) router.replace("/profile");
+      })
+      // A failed read must not leave the guard spinning forever.
+      .catch(() => {
+        setUser(null);
+        setLoaded(true);
+      });
   }, [router]);
 
-  if (!loaded) return null;
+  if (!loaded) return <ScreenWait />;
 
   // A brand-new account has no name yet — the profile window collects it.
-  if (user && !user.name) return null;
+  if (user && !user.name) return <ScreenWait label="Setting up your profile…" />;
 
   if (!user) {
     return (
