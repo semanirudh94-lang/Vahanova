@@ -44,7 +44,7 @@ async function seed() {
       customerId: "customer-1", mechanicId: "provider-1", status: "completed",
       mechanicName: "Test Provider", code: "VP1001",
     });
-    await setDoc(doc(db, "bookings", "pending-1"), {
+    await setDoc(doc(db, "bookings", "completed-2"), {\n      customerId: "customer-1", mechanicId: "provider-1", status: "completed",\n      mechanicName: "Test Provider", code: "VP1003",\n    });\n    await setDoc(doc(db, "bookings", "pending-1"),
       customerId: "customer-1", mechanicId: null, status: "pending", code: "VP1002",
     });
     await setDoc(doc(db, "openRequests", "pending-1"), {
@@ -99,7 +99,7 @@ test("only the customer on a completed booking can publish its sanitized review"
   };
 
   await assertSucceeds(setDoc(doc(ownerDb, "publicRatings", "completed-1"), review));
-  await assertFails(setDoc(doc(otherDb, "publicRatings", "completed-1"), review));
+  await assertFails(setDoc(doc(otherDb, "publicRatings", "completed-2"), { ...review, bookingId: "completed-2" }));
 });
 
 test("new users cannot grant themselves provider role", async () => {
