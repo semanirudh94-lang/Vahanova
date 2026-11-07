@@ -4,7 +4,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
     function signedIn() { return request.auth != null; }
     function isOwner() {
-      return signedIn() && request.auth.token.email == 'semanirudh@gmail.com';
+      return signedIn() && request.auth.token.get('email', '') == 'semanirudh@gmail.com';
     }
     function isMechanic() {
       return signedIn()
