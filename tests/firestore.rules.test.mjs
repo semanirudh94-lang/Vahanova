@@ -1,5 +1,4 @@
 import { after, before, test } from "node:test";
-import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import {
   assertFails,
@@ -106,7 +105,8 @@ test("only the customer on a completed booking can publish its sanitized review"
 test("new users cannot grant themselves provider role", async () => {
   await seed();
   const customerDb = env.authenticatedContext("new-user").firestore();
+  const selfPromotedDb = env.authenticatedContext("self-promoted").firestore();
 
   await assertSucceeds(setDoc(doc(customerDb, "users", "new-user"), { role: "customer" }));
-  await assertFails(setDoc(doc(customerDb, "users", "self-promoted"), { role: "mechanic" }));
+  await assertFails(setDoc(doc(selfPromotedDb, "users", "self-promoted"), { role: "mechanic" }));
 });
