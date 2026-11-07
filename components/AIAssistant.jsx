@@ -49,7 +49,7 @@ export default function AIAssistant() {
       {open && (
         <section
           aria-label="VAHANOVA AI Assistant"
-          className="mb-3 flex h-[min( min(620px, calc(100dvh-110px)), 620px)] w-[min( calc(100vw-2.5rem), 390px)] flex-col overflow-hidden rounded-2xl border border-navy-border bg-navy shadow-2xl shadow-black/50"
+          className="mb-3 flex h-[min(620px,calc(100dvh-110px))] w-[min(390px,calc(100vw-2.5rem))] flex-col overflow-hidden rounded-2xl border border-navy-border bg-navy shadow-2xl shadow-black/50"
         >
           <div className="flex items-center justify-between border-b border-white/10 bg-navy-light px-4 py-3">
             <div className="flex items-center gap-3">
