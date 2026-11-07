@@ -51,8 +51,7 @@ service cloud.firestore {
         || isOwner()
         || (signedIn() && (resource.data.customerId == request.auth.uid || resource.data.mechanicId == request.auth.uid));
       allow list: if isOwner()
-        || (signedIn() && (resource.data.customerId == request.auth.uid || resource.data.mechanicId == request.auth.uid))
-        || (isMechanic() && resource.data.mechanicId == null && resource.data.status == 'pending');
+        || (signedIn() && (resource.data.customerId == request.auth.uid || resource.data.mechanicId == request.auth.uid));
       allow create: if signedIn()
         && request.resource.data.customerId == request.auth.uid
         && ((request.resource.data.mechanicId == null && request.resource.data.status == 'pending')
@@ -72,10 +71,14 @@ service cloud.firestore {
         && getAfter(/databases/$(database)/documents/bookings/$(id)).data.customerId == request.auth.uid
         && getAfter(/databases/$(database)/documents/bookings/$(id)).data.status == 'pending'
         && getAfter(/databases/$(database)/documents/bookings/$(id)).data.mechanicId == null;
-      allow delete: if isMechanic()
-        && existsAfter(/databases/$(database)/documents/bookings/$(id))
-        && getAfter(/databases/$(database)/documents/bookings/$(id)).data.mechanicId == request.auth.uid
-        && getAfter(/databases/$(database)/documents/bookings/$(id)).data.status == 'assigned';
+      allow delete: if (isMechanic()
+          && existsAfter(/databases/$(database)/documents/bookings/$(id))
+          && getAfter(/databases/$(database)/documents/bookings/$(id)).data.mechanicId == request.auth.uid
+          && getAfter(/databases/$(database)/documents/bookings/$(id)).data.status == 'assigned')
+        || (signedIn()
+          && existsAfter(/databases/$(database)/documents/bookings/$(id))
+          && getAfter(/databases/$(database)/documents/bookings/$(id)).data.customerId == request.auth.uid
+          && getAfter(/databases/$(database)/documents/bookings/$(id)).data.status == 'cancelled');
       allow update: if false;
       allow update: if isOwner()
         || (signedIn() && resource.data.customerId == request.auth.uid
