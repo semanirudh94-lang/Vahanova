@@ -42,8 +42,9 @@ service cloud.firestore {
     match /vehicles/{id} {
       allow get, list: if signedIn() && resource.data.ownerId == request.auth.uid;
       allow create: if signedIn() && request.resource.data.ownerId == request.auth.uid;
-      allow update, delete: if signedIn() && resource.data.ownerId == request.auth.uid
+      allow update: if signedIn() && resource.data.ownerId == request.auth.uid
         && request.resource.data.ownerId == resource.data.ownerId;
+      allow delete: if signedIn() && resource.data.ownerId == request.auth.uid;
     }
     match /bookings/{id} {
       allow get: if (signedIn() && !exists(/databases/$(database)/documents/bookings/$(id)))
