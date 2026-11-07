@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import Stars from "@/components/Stars";
-import { currentUser, openRequestsForMechanic, subscribeOpenRequestsForMechanic, acceptBooking, updateBooking, completeBooking, providerProfile, saveProviderProfile, ratingsForProvider } from "@/lib/db";
+import { currentUser, openRequestsForMechanic, subscribeOpenRequestsForMechanic, acceptBooking, updateBooking, completeBooking, providerProfile, saveProviderProfile, ratingsForProvider, syncProviderContactsForMechanic } from "@/lib/db";
 import { STATUS_LABEL, STATUS_TINT, SERVICES, SERVICE_BY_KEY, VEHICLE_TYPES, SERVICE_MODES } from "@/data/services";
 import { DEHRADUN_AREAS, areaCoord } from "@/lib/geo";
 import useLocation from "@/lib/useLocation";
@@ -82,6 +82,7 @@ export default function Mechanic() {
       return;
     }
     setProfile(await providerProfile(u.id));
+    await syncProviderContactsForMechanic(u.id);
     setRatings(await ratingsForProvider(u.id));
     setList(await openRequestsForMechanic(u.id));
   }
@@ -100,11 +101,12 @@ export default function Mechanic() {
           setReady(true);
           return;
         }
-        const [p, r, initial] = await Promise.all([
+        const [p, r] = await Promise.all([
           providerProfile(u.id),
           ratingsForProvider(u.id),
-          openRequestsForMechanic(u.id),
         ]);
+        await syncProviderContactsForMechanic(u.id);
+        const initial = await openRequestsForMechanic(u.id);
         if (!alive) return;
         setProfile(p);
         setRatings(r);
