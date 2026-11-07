@@ -47,6 +47,7 @@ service cloud.firestore {
       allow delete: if signedIn() && resource.data.ownerId == request.auth.uid;
     }
     match /bookings/{id} {
+      // Pending requests are never readable from the private booking document by mechanics.
       allow get: if (signedIn() && !exists(/databases/$(database)/documents/bookings/$(id)))
         || isOwner()
         || (signedIn() && (resource.data.customerId == request.auth.uid || resource.data.mechanicId == request.auth.uid));
@@ -60,31 +61,6 @@ service cloud.firestore {
           || (request.resource.data.mechanicId is string
             && exists(/databases/$(database)/documents/providers/$(request.resource.data.mechanicId))
             && request.resource.data.status == 'assigned'));
-    }
-    match /openRequests/{id} {
-      allow get, list: if isMechanic() && resource.data.status == 'pending';
-      allow create: if signedIn()
-        && request.resource.data.keys().hasAll([
-          'bookingId', 'code', 'service', 'kind', 'date', 'createdAt', 'status'
-        ])
-        && request.resource.data.keys().hasOnly([
-          'bookingId', 'code', 'service', 'kind', 'date', 'slot', 'createdAt', 'status'
-        ])
-        && request.resource.data.bookingId == id
-        && request.resource.data.status == 'pending'
-        && existsAfter(/databases/$(database)/documents/bookings/$(id))
-        && getAfter(/databases/$(database)/documents/bookings/$(id)).data.customerId == request.auth.uid
-        && getAfter(/databases/$(database)/documents/bookings/$(id)).data.status == 'pending'
-        && getAfter(/databases/$(database)/documents/bookings/$(id)).data.mechanicId == null;
-      allow delete: if (isMechanic()
-          && existsAfter(/databases/$(database)/documents/bookings/$(id))
-          && getAfter(/databases/$(database)/documents/bookings/$(id)).data.mechanicId == request.auth.uid
-          && getAfter(/databases/$(database)/documents/bookings/$(id)).data.status == 'assigned')
-        || (signedIn()
-          && existsAfter(/databases/$(database)/documents/bookings/$(id))
-          && getAfter(/databases/$(database)/documents/bookings/$(id)).data.customerId == request.auth.uid
-          && getAfter(/databases/$(database)/documents/bookings/$(id)).data.status == 'cancelled');
-      allow update: if false;
       allow update: if isOwner()
         || (signedIn() && resource.data.customerId == request.auth.uid
           && request.resource.data.customerId == resource.data.customerId
@@ -112,6 +88,32 @@ service cloud.firestore {
               && existsAfter(/databases/$(database)/documents/records/$(id))
               && getAfter(/databases/$(database)/documents/records/$(id)).data.mechanicId == request.auth.uid
               && getAfter(/databases/$(database)/documents/records/$(id)).data.bookingId == id));
+    }
+    match /openRequests/{id} {
+      // Only non-sensitive request summaries are stored in this collection.
+      allow get, list: if isMechanic() && resource.data.status == 'pending';
+      allow create: if signedIn()
+        && request.resource.data.keys().hasAll([
+          'bookingId', 'code', 'service', 'kind', 'date', 'createdAt', 'status'
+        ])
+        && request.resource.data.keys().hasOnly([
+          'bookingId', 'code', 'service', 'kind', 'date', 'slot', 'createdAt', 'status'
+        ])
+        && request.resource.data.bookingId == id
+        && request.resource.data.status == 'pending'
+        && existsAfter(/databases/$(database)/documents/bookings/$(id))
+        && getAfter(/databases/$(database)/documents/bookings/$(id)).data.customerId == request.auth.uid
+        && getAfter(/databases/$(database)/documents/bookings/$(id)).data.status == 'pending'
+        && getAfter(/databases/$(database)/documents/bookings/$(id)).data.mechanicId == null;
+      allow delete: if (isMechanic()
+          && existsAfter(/databases/$(database)/documents/bookings/$(id))
+          && getAfter(/databases/$(database)/documents/bookings/$(id)).data.mechanicId == request.auth.uid
+          && getAfter(/databases/$(database)/documents/bookings/$(id)).data.status == 'assigned')
+        || (signedIn()
+          && existsAfter(/databases/$(database)/documents/bookings/$(id))
+          && getAfter(/databases/$(database)/documents/bookings/$(id)).data.customerId == request.auth.uid
+          && getAfter(/databases/$(database)/documents/bookings/$(id)).data.status == 'cancelled');
+      allow update: if false;
     }
     match /records/{id} {
       allow get: if isOwner()
