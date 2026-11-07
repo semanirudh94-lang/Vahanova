@@ -65,6 +65,7 @@ service cloud.firestore {
           && request.resource.data.customerId == resource.data.customerId
           && request.resource.data.mechanicId == resource.data.mechanicId
           && request.resource.data.amount == resource.data.amount
+          && resource.data.status in ['pending', 'assigned']
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'history'])
           && request.resource.data.status == 'cancelled')
         || (isMechanic() && resource.data.mechanicId == null && resource.data.status == 'pending'
@@ -111,6 +112,10 @@ service cloud.firestore {
       allow create: if signedIn()
         && request.resource.data.customerId == request.auth.uid
         && request.resource.data.bookingId == id
+        && request.resource.data.stars is number
+        && request.resource.data.stars >= 1
+        && request.resource.data.stars <= 5
+        && request.resource.data.comment.size() <= 200
         && exists(/databases/$(database)/documents/bookings/$(id))
         && get(/databases/$(database)/documents/bookings/$(id)).data.customerId == request.auth.uid
         && get(/databases/$(database)/documents/bookings/$(id)).data.status == 'completed';
