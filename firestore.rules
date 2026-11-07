@@ -97,12 +97,15 @@ service cloud.firestore {
         || (signedIn() && (resource.data.customerId == request.auth.uid || resource.data.mechanicId == request.auth.uid));
       allow create: if signedIn()
         && request.resource.data.customerId == request.auth.uid
+        && !request.resource.data.keys().hasAny(['mechanicPhone', 'mechanicUpi', 'mechanicCoord'])
         && ((request.resource.data.mechanicId == null && request.resource.data.status == 'pending'
           && existsAfter(/databases/$(database)/documents/openRequests/$(id))
           && getAfter(/databases/$(database)/documents/openRequests/$(id)).data.bookingId == id)
           || (request.resource.data.mechanicId is string
             && exists(/databases/$(database)/documents/publicProviders/$(request.resource.data.mechanicId))
             && get(/databases/$(database)/documents/publicProviders/$(request.resource.data.mechanicId)).data.active == true
+            && request.resource.data.mechanicName == get(/databases/$(database)/documents/publicProviders/$(request.resource.data.mechanicId)).data.name
+            && request.resource.data.mechanicArea == get(/databases/$(database)/documents/publicProviders/$(request.resource.data.mechanicId)).data.area
             && request.resource.data.status == 'assigned'));
       allow update: if isOwner()
         || (signedIn() && resource.data.customerId == request.auth.uid
