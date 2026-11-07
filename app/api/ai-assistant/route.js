@@ -30,7 +30,7 @@ function isRateLimited(request) {
 }
 
 export async function POST(request) {
-  if (!process.env.XAI_API_KEY) {
+  if (!process.env.GROQ_API_KEY) {
     return NextResponse.json(
       { error: "AI assistant is not configured yet. Please try again later." },
       { status: 503 }
@@ -73,14 +73,14 @@ export async function POST(request) {
   }
 
   try {
-    const response = await fetch("https://api.x.ai/v1/chat/completions", {
+    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${process.env.XAI_API_KEY}`,
+        Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: process.env.XAI_MODEL || "grok-4.6",
+        model: process.env.GROQ_MODEL || "openai/gpt-oss-20b",
         messages: [{ role: "system", content: SYSTEM_PROMPT }, ...messages],
         max_tokens: 650,
         temperature: 0.4,
@@ -90,7 +90,7 @@ export async function POST(request) {
     });
 
     if (!response.ok) {
-      console.error("xAI request failed with status:", response.status);
+      console.error("Groq request failed with status:", response.status);
       return NextResponse.json(
         { error: response.status === 429 ? "AI is busy right now. Please try again shortly." : "AI could not respond right now. Please try again." },
         { status: response.status === 429 ? 429 : 502 }
