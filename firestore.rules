@@ -156,7 +156,7 @@ service cloud.firestore {
             || (resource.data.status == 'in_progress' && request.resource.data.status == 'completed'
               && existsAfter(/databases/$(database)/documents/records/$(id))
               && getAfter(/databases/$(database)/documents/records/$(id)).data.mechanicId == request.auth.uid
-              && getAfter(/databases/$(database)/documents/records/$(id)).data.bookingId == id));
+              && getAfter(/databases/$(database)/documents/records/$(id)).data.bookingId == id))));
     }
     match /openRequests/{id} {
       // Only non-sensitive request summaries are stored in this collection.
