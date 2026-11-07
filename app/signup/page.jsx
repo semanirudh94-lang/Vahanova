@@ -56,7 +56,7 @@ export default function Signup() {
       title="Create your account"
       subtitle={
         isLive
-          ? "Pick your email and a password. Your name and mobile number are collected on the next screen."
+          ? "Pick your email and a password. Your name and mobile number are collected on the next screen. Provider access is enabled by the operator after verification."
           : "Pick an email to create your account. Passwords turn on automatically once Firebase is connected."
       }
       role={role}
@@ -78,7 +78,7 @@ export default function Signup() {
           <input className={authInput} value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" type="email" autoComplete="email" />
           <p className="mt-2 text-[11px] text-gray-500">
             {role === "mechanic"
-              ? "This email becomes your sign-in for the jobs desk, so use one you check daily."
+              ? "Provider access is enabled by the VAHANOVA operator after verification. New accounts start with customer access."
               : "We only use this to let you sign back in and to send booking updates."}
           </p>
         </div>

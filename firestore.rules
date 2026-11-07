@@ -17,14 +17,20 @@ service cloud.firestore {
     }
     match /users/{id} {
       allow get, list: if signedIn() && (request.auth.uid == id || isOwner());
-      allow create: if signedIn() && request.auth.uid == id
-        && request.resource.data.role in ['customer', 'mechanic'];
-      allow update: if signedIn() && request.auth.uid == id
-        && request.resource.data.role == resource.data.role
-        && request.resource.data.email == resource.data.email
-        && request.resource.data.jobs == resource.data.jobs
-        && request.resource.data.diff(resource.data).affectedKeys()
-          .hasOnly(['name', 'phone', 'area', 'coord', 'upi']);
+
+      // New accounts always start as customers. Only the operator can promote
+      // an account to mechanic, so a user cannot grant themselves provider access.
+      allow create: if isOwner()
+        || (signedIn() && request.auth.uid == id
+          && request.resource.data.role == 'customer');
+
+      allow update: if isOwner()
+        || (signedIn() && request.auth.uid == id
+          && request.resource.data.role == resource.data.role
+          && request.resource.data.email == resource.data.email
+          && request.resource.data.jobs == resource.data.jobs
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['name', 'phone', 'area', 'coord', 'upi']));
       allow delete: if isOwner();
     }
     match /providers/{id} {
@@ -47,16 +53,17 @@ service cloud.firestore {
       allow delete: if signedIn() && resource.data.ownerId == request.auth.uid;
     }
     match /bookings/{id} {
+      // Pending requests are never readable from the private booking document by mechanics.
       allow get: if (signedIn() && !exists(/databases/$(database)/documents/bookings/$(id)))
         || isOwner()
-        || (signedIn() && (resource.data.customerId == request.auth.uid || resource.data.mechanicId == request.auth.uid))
-        || (isMechanic() && resource.data.mechanicId == null && resource.data.status == 'pending');
+        || (signedIn() && (resource.data.customerId == request.auth.uid || resource.data.mechanicId == request.auth.uid));
       allow list: if isOwner()
-        || (signedIn() && (resource.data.customerId == request.auth.uid || resource.data.mechanicId == request.auth.uid))
-        || (isMechanic() && resource.data.mechanicId == null && resource.data.status == 'pending');
+        || (signedIn() && (resource.data.customerId == request.auth.uid || resource.data.mechanicId == request.auth.uid));
       allow create: if signedIn()
         && request.resource.data.customerId == request.auth.uid
-        && ((request.resource.data.mechanicId == null && request.resource.data.status == 'pending')
+        && ((request.resource.data.mechanicId == null && request.resource.data.status == 'pending'
+          && existsAfter(/databases/$(database)/documents/openRequests/$(id))
+          && getAfter(/databases/$(database)/documents/openRequests/$(id)).data.bookingId == id)
           || (request.resource.data.mechanicId is string
             && exists(/databases/$(database)/documents/providers/$(request.resource.data.mechanicId))
             && request.resource.data.status == 'assigned'));
@@ -75,7 +82,8 @@ service cloud.firestore {
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
             'mechanicId', 'status', 'etaMin', 'mechanicName', 'mechanicPhone',
             'mechanicArea', 'mechanicJobs', 'mechanicUpi', 'mechanicCoord', 'history'
-          ]))
+          ])
+          && exists(/databases/$(database)/documents/openRequests/$(id)))
         || (isMechanic() && resource.data.mechanicId == request.auth.uid
           && request.resource.data.mechanicId == resource.data.mechanicId
           && request.resource.data.customerId == resource.data.customerId
@@ -86,6 +94,32 @@ service cloud.firestore {
               && existsAfter(/databases/$(database)/documents/records/$(id))
               && getAfter(/databases/$(database)/documents/records/$(id)).data.mechanicId == request.auth.uid
               && getAfter(/databases/$(database)/documents/records/$(id)).data.bookingId == id));
+    }
+    match /openRequests/{id} {
+      // Only non-sensitive request summaries are stored in this collection.
+      allow get, list: if isMechanic() && resource.data.status == 'pending';
+      allow create: if signedIn()
+        && request.resource.data.keys().hasAll([
+          'bookingId', 'code', 'service', 'kind', 'date', 'createdAt', 'status'
+        ])
+        && request.resource.data.keys().hasOnly([
+          'bookingId', 'code', 'service', 'kind', 'date', 'slot', 'createdAt', 'status'
+        ])
+        && request.resource.data.bookingId == id
+        && request.resource.data.status == 'pending'
+        && existsAfter(/databases/$(database)/documents/bookings/$(id))
+        && getAfter(/databases/$(database)/documents/bookings/$(id)).data.customerId == request.auth.uid
+        && getAfter(/databases/$(database)/documents/bookings/$(id)).data.status == 'pending'
+        && getAfter(/databases/$(database)/documents/bookings/$(id)).data.mechanicId == null;
+      allow delete: if (isMechanic()
+          && existsAfter(/databases/$(database)/documents/bookings/$(id))
+          && getAfter(/databases/$(database)/documents/bookings/$(id)).data.mechanicId == request.auth.uid
+          && getAfter(/databases/$(database)/documents/bookings/$(id)).data.status == 'assigned')
+        || (signedIn()
+          && existsAfter(/databases/$(database)/documents/bookings/$(id))
+          && getAfter(/databases/$(database)/documents/bookings/$(id)).data.customerId == request.auth.uid
+          && getAfter(/databases/$(database)/documents/bookings/$(id)).data.status == 'cancelled');
+      allow update: if false;
     }
     match /records/{id} {
       allow get: if isOwner()
