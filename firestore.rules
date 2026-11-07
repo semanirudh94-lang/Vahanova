@@ -18,8 +18,7 @@ service cloud.firestore {
     match /users/{id} {
       allow get, list: if signedIn() && (request.auth.uid == id || isOwner());
       allow create: if signedIn() && request.auth.uid == id
-        && request.resource.data.role in ['customer', 'mechanic']
-;
+        && request.resource.data.role in ['customer', 'mechanic'];
       allow update: if signedIn() && request.auth.uid == id
         && request.resource.data.role == resource.data.role
         && request.resource.data.email == resource.data.email
@@ -47,7 +46,11 @@ service cloud.firestore {
         && request.resource.data.ownerId == resource.data.ownerId;
     }
     match /bookings/{id} {
-      allow get, list: if isOwner()
+      allow get: if (signedIn() && !exists(/databases/$(database)/documents/bookings/$(id)))
+        || isOwner()
+        || (signedIn() && (resource.data.customerId == request.auth.uid || resource.data.mechanicId == request.auth.uid))
+        || (isMechanic() && resource.data.mechanicId == null && resource.data.status == 'pending');
+      allow list: if isOwner()
         || (signedIn() && (resource.data.customerId == request.auth.uid || resource.data.mechanicId == request.auth.uid))
         || (isMechanic() && resource.data.mechanicId == null && resource.data.status == 'pending');
       allow create: if signedIn()
@@ -83,7 +86,13 @@ service cloud.firestore {
               && getAfter(/databases/$(database)/documents/records/$(id)).data.bookingId == id));
     }
     match /records/{id} {
-      allow get, list: if isOwner()
+      allow get: if isOwner()
+        || (signedIn() && exists(/databases/$(database)/documents/bookings/$(id))
+          && get(/databases/$(database)/documents/bookings/$(id)).data.mechanicId == request.auth.uid)
+        || (signedIn() && resource.data.customerId == request.auth.uid)
+        || (signedIn() && resource.data.mechanicId == request.auth.uid)
+        || (signedIn() && vehicleOwner(resource.data.vehicleId));
+      allow list: if isOwner()
         || (signedIn() && resource.data.customerId == request.auth.uid)
         || (signedIn() && resource.data.mechanicId == request.auth.uid)
         || (signedIn() && vehicleOwner(resource.data.vehicleId));
