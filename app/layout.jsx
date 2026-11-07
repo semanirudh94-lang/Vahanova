@@ -1,5 +1,6 @@
 import "./globals.css";
 import ServiceWorker from "@/components/ServiceWorker";
+import AIAssistant from "@/components/AIAssistant";
 
 export const metadata = {
   title: "VAHANOVA — Every journey, taken care of.",
@@ -26,6 +27,7 @@ export default function RootLayout({ children }) {
     <html lang="en">
       <body className="bg-navy text-white antialiased">
         {children}
+        <AIAssistant />
         <ServiceWorker />
       </body>
     </html>
