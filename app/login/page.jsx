@@ -52,7 +52,7 @@ export default function Login() {
     setBusy(true);
     try {
       await sendResetLink(email.trim().toLowerCase());
-      setNotice("A password reset link is on its way to that inbox. It is valid for one hour.");
+      setNotice("If an account exists for this email, a reset link is on its way. Check your inbox and spam folder. If you signed up with Google, use Continue with Google instead.");
     } catch (err) {
       setError(friendlyAuthError(err));
     } finally {

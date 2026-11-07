@@ -18,7 +18,7 @@ import Navbar from "@/components/Navbar";
 import WhatsAppFloat from "@/components/WhatsAppFloat";
 import Brand from "@/components/Brand";
 import InstallButton from "@/components/InstallButton";
-import { SITE, WA_LINK, SURVEY_STATS } from "@/data/site";
+import { SITE, WA_LINK } from "@/data/site";
 
 const FEATURES = [
   {
@@ -195,23 +195,6 @@ export default function Home() {
                 <span className="text-xs">{v.label}</span>
               </div>
             ))}
-          </div>
-        </section>
-
-        {/* Trust strip — survey proof */}
-        <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
-          <div className="rounded-2xl border border-brand-blue/30 bg-brand-blue/10 p-8 sm:p-10">
-            <div className="grid gap-8 sm:grid-cols-3">
-              {SURVEY_STATS.map((s) => (
-                <div key={s.label}>
-                  <p className="text-4xl font-extrabold text-brand-amber">{s.value}</p>
-                  <p className="mt-2 text-sm text-gray-300">{s.label}</p>
-                </div>
-              ))}
-            </div>
-            <p className="mt-8 border-t border-white/10 pt-6 text-sm italic text-gray-300">
-              &ldquo;Out of fuel, a puncture — and nobody nearby to call.&rdquo; — rider from our {SITE.city} survey
-            </p>
           </div>
         </section>
 

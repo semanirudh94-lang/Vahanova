@@ -1,4 +1,4 @@
-const CACHE = "vahanova-v7";
+const CACHE = "vahanova-v8";
 const SHELL = [
   "/",
   "/manifest.webmanifest",
