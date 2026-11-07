@@ -233,7 +233,7 @@ service cloud.firestore {
         && request.resource.data.comment is string
         && request.resource.data.comment.size() <= 200
         && exists(/databases/$(database)/documents/bookings/$(id))
-        && get(/databases/$(database)/documents/bookings/$(id)).data.customerId == request.auth.uid
+        && (isOwner() || get(/databases/$(database)/documents/bookings/$(id)).data.customerId == request.auth.uid)
         && get(/databases/$(database)/documents/bookings/$(id)).data.status == 'completed'
         && get(/databases/$(database)/documents/bookings/$(id)).data.mechanicId == request.resource.data.providerId;
       allow update, delete: if isOwner();
