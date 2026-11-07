@@ -215,7 +215,7 @@ export default function Mechanic() {
         <Stat icon={User} label="Working area" value={profile?.area || "Not set"} small />
       </div>
 
-      <div className="rounded-xl border border-navy-border bg-navy-light p-6">
+      <div id="profile" className="rounded-xl border border-navy-border bg-navy-light p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="font-semibold">My rate card</p>
@@ -251,28 +251,27 @@ export default function Mechanic() {
         </div>
       </div>
 
-      {openPool.length > 0 && (
-        <div className="rounded-xl border border-brand-amber/40 bg-brand-amber/5 p-6">
-          <p className="font-semibold text-brand-amber">Open requests (any provider can accept)</p>
-          <div className="mt-4 space-y-3">
-            {openPool.map((b) => (
-              <JobRow key={b.id} b={b}>
-                <button
-                  onClick={async () => {
-                    await acceptBooking(b.id, user.id);
-                    refresh();
-                  }}
-                  className="rounded-lg bg-brand-amber px-4 py-2 text-xs font-bold text-navy"
-                >
-                  Accept
-                </button>
-              </JobRow>
-            ))}
-          </div>
+      <div id="requests" className="rounded-xl border border-brand-amber/40 bg-brand-amber/5 p-6">
+        <p className="font-semibold text-brand-amber">Open requests (any provider can accept)</p>
+        <div className="mt-4 space-y-3">
+          {openPool.length === 0 && <p className="text-sm text-gray-400">No open requests right now. New requests will appear here automatically.</p>}
+          {openPool.map((b) => (
+            <JobRow key={b.id} b={b}>
+              <button
+                onClick={async () => {
+                  const accepted = await acceptBooking(b.id, user.id);
+                  if (accepted) refresh();
+                }}
+                className="rounded-lg bg-brand-amber px-4 py-2 text-xs font-bold text-navy"
+              >
+                Accept
+              </button>
+            </JobRow>
+          ))}
         </div>
-      )}
+      </div>
 
-      <div className="rounded-xl border border-navy-border bg-navy-light p-6">
+      <div id="jobs" className="rounded-xl border border-navy-border bg-navy-light p-6">
         <p className="font-semibold">My Jobs</p>
         <div className="mt-4 space-y-3">
           {mine.filter((b) => b.status !== "completed").length === 0 && (
