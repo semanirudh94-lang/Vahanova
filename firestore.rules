@@ -4,7 +4,9 @@ service cloud.firestore {
   match /databases/{database}/documents {
     function signedIn() { return request.auth != null; }
     function isOwner() {
-      return signedIn() && request.auth.token.email == 'semanirudh@gmail.com';
+      return signedIn()
+        && ('email' in request.auth.token)
+        && request.auth.token.email == 'semanirudh@gmail.com';
     }
     function isMechanic() {
       return signedIn()
@@ -33,16 +35,52 @@ service cloud.firestore {
             .hasOnly(['name', 'phone', 'area', 'coord', 'upi']));
       allow delete: if isOwner();
     }
-    match /providers/{id} {
+    match /publicProviders/{id} {
       allow get, list: if signedIn();
       allow create: if isMechanic() && request.auth.uid == id
         && request.resource.data.keys().hasOnly([
-          'name', 'phone', 'area', 'coord', 'upi', 'vehicleTypes', 'services', 'active', 'updatedAt'
+          'name', 'area', 'vehicleTypes', 'services', 'active', 'updatedAt'
         ]);
       allow update: if isMechanic() && request.auth.uid == id
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          'name', 'phone', 'area', 'coord', 'upi', 'vehicleTypes', 'services', 'active', 'updatedAt'
+          'name', 'area', 'vehicleTypes', 'services', 'active', 'updatedAt'
         ]);
+      allow delete: if isOwner();
+    }
+    match /providerPrivate/{id} {
+      allow get: if isOwner() || (signedIn() && request.auth.uid == id);
+      allow list: if false;
+      allow create: if isMechanic() && request.auth.uid == id
+        && request.resource.data.keys().hasOnly(['phone', 'coord', 'upi', 'updatedAt'])
+        && request.resource.data.phone is string
+        && request.resource.data.phone.size() <= 24
+        && request.resource.data.upi is string
+        && request.resource.data.upi.size() <= 120
+        && (request.resource.data.coord == null
+          || (request.resource.data.coord is list && request.resource.data.coord.size() == 2
+            && request.resource.data.coord[0] is number
+            && request.resource.data.coord[0] >= -90 && request.resource.data.coord[0] <= 90
+            && request.resource.data.coord[1] is number
+            && request.resource.data.coord[1] >= -180 && request.resource.data.coord[1] <= 180));
+      allow update: if isMechanic() && request.auth.uid == id
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['phone', 'coord', 'upi', 'updatedAt'])
+        && request.resource.data.phone is string
+        && request.resource.data.phone.size() <= 24
+        && request.resource.data.upi is string
+        && request.resource.data.upi.size() <= 120
+        && (request.resource.data.coord == null
+          || (request.resource.data.coord is list && request.resource.data.coord.size() == 2
+            && request.resource.data.coord[0] is number
+            && request.resource.data.coord[0] >= -90 && request.resource.data.coord[0] <= 90
+            && request.resource.data.coord[1] is number
+            && request.resource.data.coord[1] >= -180 && request.resource.data.coord[1] <= 180));
+      allow delete: if isOwner();
+    }
+    // Legacy documents may contain private fields; never expose them publicly.
+    match /providers/{id} {
+      allow get: if isOwner() || (signedIn() && request.auth.uid == id);
+      allow list: if isOwner();
+      allow create, update: if false;
       allow delete: if isOwner();
     }
     match /vehicles/{id} {
@@ -61,11 +99,15 @@ service cloud.firestore {
         || (signedIn() && (resource.data.customerId == request.auth.uid || resource.data.mechanicId == request.auth.uid));
       allow create: if signedIn()
         && request.resource.data.customerId == request.auth.uid
+        && !request.resource.data.keys().hasAny(['mechanicPhone', 'mechanicUpi', 'mechanicCoord'])
         && ((request.resource.data.mechanicId == null && request.resource.data.status == 'pending'
           && existsAfter(/databases/$(database)/documents/openRequests/$(id))
           && getAfter(/databases/$(database)/documents/openRequests/$(id)).data.bookingId == id)
           || (request.resource.data.mechanicId is string
-            && exists(/databases/$(database)/documents/providers/$(request.resource.data.mechanicId))
+            && exists(/databases/$(database)/documents/publicProviders/$(request.resource.data.mechanicId))
+            && get(/databases/$(database)/documents/publicProviders/$(request.resource.data.mechanicId)).data.active == true
+            && request.resource.data.mechanicName == get(/databases/$(database)/documents/publicProviders/$(request.resource.data.mechanicId)).data.name
+            && request.resource.data.mechanicArea == get(/databases/$(database)/documents/publicProviders/$(request.resource.data.mechanicId)).data.area
             && request.resource.data.status == 'assigned'));
       allow update: if isOwner()
         || (signedIn() && resource.data.customerId == request.auth.uid
@@ -75,6 +117,19 @@ service cloud.firestore {
           && resource.data.status in ['pending', 'assigned']
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'history'])
           && request.resource.data.status == 'cancelled')
+        || (signedIn() && resource.data.customerId == request.auth.uid
+          && request.resource.data.customerId == resource.data.customerId
+          && resource.data.status in ['pending', 'assigned', 'on_way', 'in_progress']
+          && request.resource.data.status == resource.data.status
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['coord', 'locAccuracy'])
+          && request.resource.data.coord is list
+          && request.resource.data.coord.size() == 2
+          && request.resource.data.coord[0] is number
+          && request.resource.data.coord[0] >= -90
+          && request.resource.data.coord[0] <= 90
+          && request.resource.data.coord[1] is number
+          && request.resource.data.coord[1] >= -180
+          && request.resource.data.coord[1] <= 180)
         || (isMechanic() && resource.data.mechanicId == null && resource.data.status == 'pending'
           && request.resource.data.mechanicId == request.auth.uid
           && request.resource.data.status == 'assigned'
@@ -87,13 +142,23 @@ service cloud.firestore {
         || (isMechanic() && resource.data.mechanicId == request.auth.uid
           && request.resource.data.mechanicId == resource.data.mechanicId
           && request.resource.data.customerId == resource.data.customerId
+          && resource.data.status in ['assigned', 'on_way', 'in_progress']
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'mechanicName', 'mechanicPhone', 'mechanicArea', 'mechanicJobs', 'mechanicUpi', 'mechanicCoord'
+          ])
+          && request.resource.data.mechanicName is string
+          && request.resource.data.mechanicPhone is string
+          && request.resource.data.mechanicUpi is string)
+        || (isMechanic() && resource.data.mechanicId == request.auth.uid
+          && request.resource.data.mechanicId == resource.data.mechanicId
+          && request.resource.data.customerId == resource.data.customerId
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'history', 'amount'])
           && ((resource.data.status == 'assigned' && request.resource.data.status == 'on_way')
             || (resource.data.status == 'on_way' && request.resource.data.status == 'in_progress')
             || (resource.data.status == 'in_progress' && request.resource.data.status == 'completed'
               && existsAfter(/databases/$(database)/documents/records/$(id))
               && getAfter(/databases/$(database)/documents/records/$(id)).data.mechanicId == request.auth.uid
-              && getAfter(/databases/$(database)/documents/records/$(id)).data.bookingId == id));
+              && getAfter(/databases/$(database)/documents/records/$(id)).data.bookingId == id)));
     }
     match /openRequests/{id} {
       // Only non-sensitive request summaries are stored in this collection.
@@ -111,7 +176,8 @@ service cloud.firestore {
         && getAfter(/databases/$(database)/documents/bookings/$(id)).data.customerId == request.auth.uid
         && getAfter(/databases/$(database)/documents/bookings/$(id)).data.status == 'pending'
         && getAfter(/databases/$(database)/documents/bookings/$(id)).data.mechanicId == null;
-      allow delete: if (isMechanic()
+      allow delete: if isOwner()
+        || (isMechanic()
           && existsAfter(/databases/$(database)/documents/bookings/$(id))
           && getAfter(/databases/$(database)/documents/bookings/$(id)).data.mechanicId == request.auth.uid
           && getAfter(/databases/$(database)/documents/bookings/$(id)).data.status == 'assigned')
@@ -142,7 +208,10 @@ service cloud.firestore {
       allow update, delete: if isOwner();
     }
     match /ratings/{id} {
-      allow get, list: if signedIn();
+      // Full rating documents contain customer and vehicle identifiers.
+      allow get, list: if isOwner()
+        || (signedIn() && (resource.data.customerId == request.auth.uid
+          || resource.data.providerId == request.auth.uid));
       allow create: if signedIn()
         && request.resource.data.customerId == request.auth.uid
         && request.resource.data.bookingId == id
@@ -153,6 +222,25 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/bookings/$(id))
         && get(/databases/$(database)/documents/bookings/$(id)).data.customerId == request.auth.uid
         && get(/databases/$(database)/documents/bookings/$(id)).data.status == 'completed';
+      allow update, delete: if isOwner();
+    }
+    match /publicRatings/{id} {
+      // Public reviews intentionally contain no customer or vehicle identifiers.
+      allow get, list: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly([
+          'bookingId', 'providerId', 'providerName', 'service', 'stars', 'comment', 'createdAt'
+        ])
+        && request.resource.data.bookingId == id
+        && request.resource.data.stars is number
+        && request.resource.data.stars >= 1
+        && request.resource.data.stars <= 5
+        && request.resource.data.comment is string
+        && request.resource.data.comment.size() <= 200
+        && exists(/databases/$(database)/documents/bookings/$(id))
+        && (isOwner() || get(/databases/$(database)/documents/bookings/$(id)).data.customerId == request.auth.uid)
+        && get(/databases/$(database)/documents/bookings/$(id)).data.status == 'completed'
+        && get(/databases/$(database)/documents/bookings/$(id)).data.mechanicId == request.resource.data.providerId;
       allow update, delete: if isOwner();
     }
     match /meta/{id} {

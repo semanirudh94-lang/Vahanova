@@ -58,7 +58,7 @@ const STEPS = [
   },
   {
     title: "Pick your provider",
-    desc: "Book the one you want. Their details and contact number come with the booking.",
+    desc: "Choose the provider you want. Contact details are shared after the booking is assigned.",
   },
   {
     title: "Service and record",

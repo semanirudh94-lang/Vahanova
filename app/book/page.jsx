@@ -131,13 +131,13 @@ export default function Book() {
           <CheckCircle2 className="mx-auto h-12 w-12 text-green-400" />
           <h1 className="mt-4 text-2xl font-bold">Booking confirmed</h1>
           <p className="mt-2 text-sm text-gray-400">
-            {done.providerName} has been notified. Track the status live from your dashboard.
+            Your booking is saved. Provider contact details appear once the provider opens the assigned job.
           </p>
           <div className="mt-6 space-y-2 rounded-xl bg-navy p-5 text-left text-sm">
             <Row k="Booking ID" v={done.code} />
             <Row k="Service" v={done.service} />
             <Row k="Provider" v={`${done.providerName} · ${done.providerArea || "Dehradun"}`} />
-            <Row k="Provider contact" v={done.providerPhone || "—"} />
+            <Row k="Provider contact" v={done.providerPhone || "Shared when provider opens the assigned job"} />
             <Row k="Vehicle" v={done.vehicleNumber || "—"} />
             <Row k="Date" v={`${done.date} · ${done.slot}`} />
             <Row k="Address" v={done.address || "—"} />
@@ -343,7 +343,6 @@ export default function Book() {
                   <select className={inputCls} value={filters.sort} onChange={(e) => setFilters({ ...filters, sort: e.target.value })}>
                     <option value="price">Lowest price</option>
                     <option value="jobs">Most experience</option>
-                    <option value="eta">Arriving soonest</option>
                   </select>
                 </div>
               </div>
