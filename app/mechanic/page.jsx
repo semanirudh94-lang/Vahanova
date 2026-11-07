@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import Stars from "@/components/Stars";
-import { currentUser, openRequestsForMechanic, acceptBooking, updateBooking, completeBooking, providerProfile, saveProviderProfile, ratingsForProvider } from "@/lib/db";
+import { currentUser, openRequestsForMechanic, subscribeOpenRequestsForMechanic, acceptBooking, updateBooking, completeBooking, providerProfile, saveProviderProfile, ratingsForProvider } from "@/lib/db";
 import { STATUS_LABEL, STATUS_TINT, SERVICES, SERVICE_BY_KEY, VEHICLE_TYPES, SERVICE_MODES } from "@/data/services";
 import { DEHRADUN_AREAS, areaCoord } from "@/lib/geo";
 import useLocation from "@/lib/useLocation";
@@ -34,11 +34,11 @@ const PAYMENTS = [
 ];
 
 const NAV = [
-  { icon: LayoutDashboard, label: "Dashboard", href: "/mechanic" },
-  { icon: Inbox, label: "Requests", href: "/mechanic" },
-  { icon: Wrench, label: "My Jobs", href: "/mechanic" },
-  { icon: History, label: "Completed", href: "/mechanic" },
-  { icon: User, label: "Profile", href: "/mechanic" },
+  { icon: LayoutDashboard, label: "Dashboard", href: "#dashboard" },
+  { icon: Inbox, label: "Requests", href: "#requests" },
+  { icon: Wrench, label: "My Jobs", href: "#jobs" },
+  { icon: History, label: "Completed", href: "#completed" },
+  { icon: User, label: "Profile", href: "#profile" },
 ];
 
 const inputCls =
@@ -87,7 +87,44 @@ export default function Mechanic() {
   }
 
   useEffect(() => {
-    refresh().catch(() => {}).finally(() => setReady(true));
+    let alive = true;
+    let stop = null;
+    async function boot() {
+      try {
+        const u = await currentUser();
+        if (!alive) return;
+        setUser(u);
+        if (!u || u.role !== "mechanic") {
+          setList([]);
+          setProfile(null);
+          setReady(true);
+          return;
+        }
+        const [p, r, initial] = await Promise.all([
+          providerProfile(u.id),
+          ratingsForProvider(u.id),
+          openRequestsForMechanic(u.id),
+        ]);
+        if (!alive) return;
+        setProfile(p);
+        setRatings(r);
+        setList(initial);
+        stop = await subscribeOpenRequestsForMechanic(
+          u.id,
+          (next) => { if (alive) setList(next); },
+          (error) => console.error("Mechanic request listener failed:", error)
+        );
+      } catch (error) {
+        console.error("Could not load mechanic dashboard:", error);
+      } finally {
+        if (alive) setReady(true);
+      }
+    }
+    boot();
+    return () => {
+      alive = false;
+      if (stop) stop();
+    };
   }, []);
 
   if (!ready) return <ScreenWait />;
@@ -170,8 +207,8 @@ export default function Mechanic() {
   const partsTotal = bill.parts.reduce((s, p) => s + (Number(p.qty) || 0) * (Number(p.price) || 0), 0);
 
   return (
-    <AppShell items={NAV} active="Provider Dashboard">
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+    <AppShell items={NAV} active="Dashboard">
+      <div id="dashboard" className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Stat icon={Wrench} label="Active jobs" value={today.length} />
         <Stat icon={CheckCircle2} label="Completed" value={completed.length} tint="text-green-400 bg-green-500/10" />
         <Stat icon={ReceiptText} label="Rates published" value={publishedCount} tint="text-brand-amber bg-brand-amber/10" />
@@ -238,10 +275,10 @@ export default function Mechanic() {
       <div className="rounded-xl border border-navy-border bg-navy-light p-6">
         <p className="font-semibold">My Jobs</p>
         <div className="mt-4 space-y-3">
-          {mine.length === 0 && (
+          {mine.filter((b) => b.status !== "completed").length === 0 && (
             <p className="text-sm text-gray-500">No jobs assigned yet. New bookings from your rate card will appear here.</p>
           )}
-          {mine.map((b) => (
+          {mine.filter((b) => b.status !== "completed").map((b) => (
             <JobRow key={b.id} b={b}>
               {b.status === "assigned" && (
                 <button onClick={() => onWay(b)} className="rounded-lg bg-brand-blue px-4 py-2 text-xs font-semibold text-white">
@@ -261,6 +298,14 @@ export default function Mechanic() {
               {b.status === "completed" && <span className="text-xs text-green-400">₹{b.amount} billed</span>}
             </JobRow>
           ))}
+        </div>
+      </div>
+
+      <div id="completed" className="rounded-xl border border-navy-border bg-navy-light p-6">
+        <p className="font-semibold">Completed jobs</p>
+        <div className="mt-4 space-y-3">
+          {completed.length === 0 && <p className="text-sm text-gray-500">No completed jobs yet.</p>}
+          {completed.map((b) => <JobRow key={b.id} b={b}><span className="text-xs text-green-400">₹{b.amount} billed</span></JobRow>)}
         </div>
       </div>
 
