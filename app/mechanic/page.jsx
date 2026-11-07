@@ -137,8 +137,8 @@ export default function Mechanic() {
         <h1 className="text-2xl font-bold">This is the service provider dashboard</h1>
         <p className="max-w-md text-sm text-gray-400">
           {user?.email
-            ? `${user.email} is a customer account, so it cannot open the jobs desk. Provider access is chosen when an account is created.`
-            : "Provider access is chosen when an account is created."}
+            ? `${user.email} is a customer account, so it cannot open the jobs desk. Provider access is enabled only after the VAHANOVA operator reviews and approves the account.`
+            : "Provider access is enabled after operator review and approval."}
         </p>
         <div className="flex flex-wrap items-center justify-center gap-3">
           <Link href="/signup?role=mechanic" className="rounded-lg bg-brand-amber px-6 py-3 font-semibold text-navy">
