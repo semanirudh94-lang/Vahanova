@@ -17,14 +17,20 @@ service cloud.firestore {
     }
     match /users/{id} {
       allow get, list: if signedIn() && (request.auth.uid == id || isOwner());
-      allow create: if signedIn() && request.auth.uid == id
-        && request.resource.data.role in ['customer', 'mechanic'];
-      allow update: if signedIn() && request.auth.uid == id
-        && request.resource.data.role == resource.data.role
-        && request.resource.data.email == resource.data.email
-        && request.resource.data.jobs == resource.data.jobs
-        && request.resource.data.diff(resource.data).affectedKeys()
-          .hasOnly(['name', 'phone', 'area', 'coord', 'upi']);
+
+      // New accounts always start as customers. Only the operator can promote
+      // an account to mechanic, so a user cannot grant themselves provider access.
+      allow create: if isOwner()
+        || (signedIn() && request.auth.uid == id
+          && request.resource.data.role == 'customer');
+
+      allow update: if isOwner()
+        || (signedIn() && request.auth.uid == id
+          && request.resource.data.role == resource.data.role
+          && request.resource.data.email == resource.data.email
+          && request.resource.data.jobs == resource.data.jobs
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['name', 'phone', 'area', 'coord', 'upi']));
       allow delete: if isOwner();
     }
     match /providers/{id} {
