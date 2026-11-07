@@ -207,7 +207,7 @@ export default function Mechanic() {
   const partsTotal = bill.parts.reduce((s, p) => s + (Number(p.qty) || 0) * (Number(p.price) || 0), 0);
 
   return (
-    <AppShell items={NAV} active="Provider Dashboard">
+    <AppShell items={NAV} active="Dashboard">
       <div id="dashboard" className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Stat icon={Wrench} label="Active jobs" value={today.length} />
         <Stat icon={CheckCircle2} label="Completed" value={completed.length} tint="text-green-400 bg-green-500/10" />
