@@ -54,7 +54,9 @@ service cloud.firestore {
         || (signedIn() && (resource.data.customerId == request.auth.uid || resource.data.mechanicId == request.auth.uid));
       allow create: if signedIn()
         && request.resource.data.customerId == request.auth.uid
-        && ((request.resource.data.mechanicId == null && request.resource.data.status == 'pending')
+        && ((request.resource.data.mechanicId == null && request.resource.data.status == 'pending'
+          && existsAfter(/databases/$(database)/documents/openRequests/$(id))
+          && getAfter(/databases/$(database)/documents/openRequests/$(id)).data.bookingId == id)
           || (request.resource.data.mechanicId is string
             && exists(/databases/$(database)/documents/providers/$(request.resource.data.mechanicId))
             && request.resource.data.status == 'assigned'));
@@ -62,8 +64,11 @@ service cloud.firestore {
     match /openRequests/{id} {
       allow get, list: if isMechanic() && resource.data.status == 'pending';
       allow create: if signedIn()
+        && request.resource.data.keys().hasAll([
+          'bookingId', 'code', 'service', 'kind', 'date', 'createdAt', 'status'
+        ])
         && request.resource.data.keys().hasOnly([
-          'bookingId', 'code', 'service', 'vehicleNumber', 'kind', 'date', 'slot', 'createdAt', 'status'
+          'bookingId', 'code', 'service', 'kind', 'date', 'slot', 'createdAt', 'status'
         ])
         && request.resource.data.bookingId == id
         && request.resource.data.status == 'pending'
