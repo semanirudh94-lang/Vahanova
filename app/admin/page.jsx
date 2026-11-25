@@ -6,7 +6,7 @@ import ScreenWait from "@/components/ScreenWait";
 import { useEffect, useState } from "react";
 import { LayoutDashboard, Inbox, Users, Wrench, IndianRupee, ShieldCheck } from "lucide-react";
 import AppShell from "@/components/AppShell";
-import { allBookings, mechanics, assignBooking, stats, currentUser, isLive } from "@/lib/db";
+import { allBookings, mechanics, assignBooking, stats, currentUser, isLive, migrateLegacyPublicRatings } from "@/lib/db";
 import { SITE } from "@/data/site";
 import { STATUS_LABEL, STATUS_TINT } from "@/data/services";
 
@@ -30,6 +30,8 @@ export default function Admin() {
   const [mechs, setMechs] = useState([]);
   const [totals, setTotals] = useState(null);
   const [filter, setFilter] = useState("all");
+  const [migrationBusy, setMigrationBusy] = useState(false);
+  const [migrationMessage, setMigrationMessage] = useState("");
 
   async function refresh() {
     setBookings(await allBookings());
@@ -156,6 +158,35 @@ export default function Admin() {
             </tbody>
           </table>
         </div>
+      </div>
+
+      <div className="rounded-xl border border-navy-border bg-navy-light p-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="font-semibold">Legacy review migration</p>
+            <p className="mt-1 text-xs text-gray-500">Copies only public review fields from older private ratings. Safe to run more than once.</p>
+          </div>
+          <button
+            type="button"
+            disabled={migrationBusy}
+            onClick={async () => {
+              setMigrationBusy(true);
+              setMigrationMessage("");
+              try {
+                const count = await migrateLegacyPublicRatings();
+                setMigrationMessage(`Migrated ${count} review(s).`);
+              } catch (error) {
+                setMigrationMessage(error?.message || "Review migration failed.");
+              } finally {
+                setMigrationBusy(false);
+              }
+            }}
+            className="rounded-lg border border-navy-border px-4 py-2 text-xs font-semibold text-gray-200 disabled:opacity-50"
+          >
+            {migrationBusy ? "Migrating…" : "Migrate old reviews"}
+          </button>
+        </div>
+        {migrationMessage && <p className="mt-2 text-xs text-brand-amber">{migrationMessage}</p>}
       </div>
 
       <div className="rounded-xl border border-navy-border bg-navy-light p-6">

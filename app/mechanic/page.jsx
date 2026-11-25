@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import AppShell from "@/components/AppShell";
 import Stars from "@/components/Stars";
-import { currentUser, openRequestsForMechanic, subscribeOpenRequestsForMechanic, acceptBooking, updateBooking, completeBooking, providerProfile, saveProviderProfile, ratingsForProvider } from "@/lib/db";
+import { currentUser, openRequestsForMechanic, subscribeOpenRequestsForMechanic, acceptBooking, updateBooking, completeBooking, providerProfile, saveProviderProfile, ratingsForProvider, syncProviderContactsForMechanic } from "@/lib/db";
 import { STATUS_LABEL, STATUS_TINT, SERVICES, SERVICE_BY_KEY, VEHICLE_TYPES, SERVICE_MODES } from "@/data/services";
 import { DEHRADUN_AREAS, areaCoord } from "@/lib/geo";
 import useLocation from "@/lib/useLocation";
@@ -82,6 +82,7 @@ export default function Mechanic() {
       return;
     }
     setProfile(await providerProfile(u.id));
+    await syncProviderContactsForMechanic(u.id);
     setRatings(await ratingsForProvider(u.id));
     setList(await openRequestsForMechanic(u.id));
   }
@@ -100,11 +101,12 @@ export default function Mechanic() {
           setReady(true);
           return;
         }
-        const [p, r, initial] = await Promise.all([
+        const [p, r] = await Promise.all([
           providerProfile(u.id),
           ratingsForProvider(u.id),
-          openRequestsForMechanic(u.id),
         ]);
+        await syncProviderContactsForMechanic(u.id);
+        const initial = await openRequestsForMechanic(u.id);
         if (!alive) return;
         setProfile(p);
         setRatings(r);
@@ -135,8 +137,8 @@ export default function Mechanic() {
         <h1 className="text-2xl font-bold">This is the service provider dashboard</h1>
         <p className="max-w-md text-sm text-gray-400">
           {user?.email
-            ? `${user.email} is a customer account, so it cannot open the jobs desk. Provider access is chosen when an account is created.`
-            : "Provider access is chosen when an account is created."}
+            ? `${user.email} is a customer account, so it cannot open the jobs desk. Provider access is enabled only after the VAHANOVA operator reviews and approves the account.`
+            : "Provider access is enabled after operator review and approval."}
         </p>
         <div className="flex flex-wrap items-center justify-center gap-3">
           <Link href="/signup?role=mechanic" className="rounded-lg bg-brand-amber px-6 py-3 font-semibold text-navy">

@@ -84,7 +84,7 @@ export default function Track() {
     if (!code) return;
     let alive = true;
     (async () => {
-      const b = await bookingByCode(code);
+      const b = await bookingByCode(code, user?.id);
       if (!alive || !b) return;
       setBooking(b);
       setMechanic(
@@ -102,7 +102,7 @@ export default function Track() {
     return () => {
       alive = false;
     };
-  }, [code, tick]);
+  }, [code, tick, user?.id]);
 
   const geo = useMemo(() => {
     if (!booking) return null;
