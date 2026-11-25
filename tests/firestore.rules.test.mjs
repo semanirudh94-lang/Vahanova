@@ -59,15 +59,27 @@ async function seed() {
   });
 }
 
-test("provider private details are visible only to the provider and operator", async () => {
+test("provider can read their own private details", async () => {
   await seed();
   const providerDb = env.authenticatedContext("provider-1", { email: "provider@example.com" }).firestore();
-  const customerDb = env.authenticatedContext("customer-1", { email: "customer@example.com" }).firestore();
-  const operatorDb = env.authenticatedContext("operator-1", { email: "semanir@gmail.com" }).firestore();
-
   await assertSucceeds(getDoc(doc(providerDb, "providerPrivate", "provider-1")));
+});
+
+test("operator can read provider private details", async () => {
+  await seed();
+  const operatorDb = env.authenticatedContext("operator-1", { email: "semanir@gmail.com" }).firestore();
   await assertSucceeds(getDoc(doc(operatorDb, "providerPrivate", "provider-1")));
+});
+
+test("customer cannot read provider private details", async () => {
+  await seed();
+  const customerDb = env.authenticatedContext("customer-1", { email: "customer@example.com" }).firestore();
   await assertFails(getDoc(doc(customerDb, "providerPrivate", "provider-1")));
+});
+
+test("provider cannot list private details for all providers", async () => {
+  await seed();
+  const providerDb = env.authenticatedContext("provider-1", { email: "provider@example.com" }).firestore();
   await assertFails(getDocs(collection(providerDb, "providerPrivate")));
 });
 
