@@ -51,6 +51,10 @@ async function seed() {
     await setDoc(doc(db, "bookings", "pending-1"), {
       customerId: "customer-1", mechanicId: null, status: "pending", code: "VP1002",
     });
+    await setDoc(doc(db, "ratings", "private-rating-1"), {
+      bookingId: "completed-1", customerId: "customer-1", providerId: "provider-1",
+      vehicleNumber: "UK00AB1234", stars: 5, comment: "Private review",
+    });
     await setDoc(doc(db, "openRequests", "pending-1"), {
       bookingId: "pending-1", code: "VP1002", service: "Puncture",
       kind: "bike", date: "2026-11-07", createdAt: "2026-11-07T00:00:00.000Z",
@@ -75,6 +79,14 @@ test("customer cannot read provider private details", async () => {
   await seed();
   const customerDb = env.authenticatedContext("customer-1", { email: "customer@example.com" }).firestore();
   await assertFails(getDoc(doc(customerDb, "providerPrivate", "provider-1")));
+});
+
+test("provider cannot read private customer rating details", async () => {
+  await seed();
+  const providerDb = env.authenticatedContext("provider-1", { email: "provider@example.com" }).firestore();
+  const customerDb = env.authenticatedContext("customer-1", { email: "customer@example.com" }).firestore();
+  await assertFails(getDoc(doc(providerDb, "ratings", "private-rating-1")));
+  await assertSucceeds(getDoc(doc(customerDb, "ratings", "private-rating-1")));
 });
 
 test("provider cannot list private details for all providers", async () => {
