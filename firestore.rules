@@ -210,8 +210,7 @@ service cloud.firestore {
     match /ratings/{id} {
       // Full rating documents contain customer and vehicle identifiers.
       allow get, list: if isOwner()
-        || (signedIn() && (resource.data.customerId == request.auth.uid
-          || resource.data.providerId == request.auth.uid));
+        || (signedIn() && resource.data.customerId == request.auth.uid);
       allow create: if signedIn()
         && request.resource.data.customerId == request.auth.uid
         && request.resource.data.bookingId == id
