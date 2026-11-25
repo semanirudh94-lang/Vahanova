@@ -67,7 +67,7 @@ test("provider can read their own private details", async () => {
 
 test("operator can read provider private details", async () => {
   await seed();
-  const operatorDb = env.authenticatedContext("operator-1", { email: "semanir@gmail.com" }).firestore();
+  const operatorDb = env.authenticatedContext("operator-1", { email: "semanirudh94@gmail.com" }).firestore();
   await assertSucceeds(getDoc(doc(operatorDb, "providerPrivate", "provider-1")));
 });
 
