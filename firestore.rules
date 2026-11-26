@@ -247,6 +247,17 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/bookings/$(id)).data.mechanicId == request.resource.data.providerId;
       allow update, delete: if isOwner();
     }
+    // FCM device tokens are private and writable only by their approved mechanic.
+    match /mechanicDevices/{id} {
+      allow get: if signedIn() && request.auth.uid == id;
+      allow list: if false;
+      allow create, update: if isMechanic() && request.auth.uid == id
+        && request.resource.data.keys().hasOnly(['tokens', 'updatedAt'])
+        && request.resource.data.tokens is list
+        && request.resource.data.tokens.size() <= 5
+        && request.resource.data.updatedAt is timestamp;
+      allow delete: if isMechanic() && request.auth.uid == id;
+    }
     match /meta/{id} {
       allow get, list: if signedIn();
       allow create: if signedIn() && request.resource.data.keys().hasOnly(['n'])
