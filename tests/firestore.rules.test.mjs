@@ -11,6 +11,7 @@ import {
   getDoc,
   getDocs,
   query,
+  runTransaction,
   setDoc,
   where,
 } from "firebase/firestore";
@@ -33,9 +34,13 @@ async function seed() {
   await env.withSecurityRulesDisabled(async (context) => {
     const db = context.firestore();
     await setDoc(doc(db, "users", "provider-1"), { role: "mechanic", email: "provider@example.com" });
+    await setDoc(doc(db, "users", "provider-2"), { role: "mechanic", email: "provider2@example.com" });
     await setDoc(doc(db, "users", "customer-1"), { role: "customer", email: "customer@example.com" });
     await setDoc(doc(db, "publicProviders", "provider-1"), {
       name: "Test Provider", area: "Central", active: true, vehicleTypes: [], services: [],
+    });
+    await setDoc(doc(db, "publicProviders", "provider-2"), {
+      name: "Second Provider", area: "Central", active: true, vehicleTypes: [], services: [],
     });
     await setDoc(doc(db, "providerPrivate", "provider-1"), {
       phone: "9999999999", coord: [30.3, 78.0], upi: "provider@upi",
@@ -101,6 +106,45 @@ test("providers see sanitized open requests but cannot read pending booking deta
 
   await assertSucceeds(getDocs(query(collection(providerDb, "openRequests"), where("status", "==", "pending"))));
   await assertFails(getDoc(doc(providerDb, "bookings", "pending-1")));
+});
+
+
+test("only one provider can atomically accept an open request", async () => {
+  await seed();
+  const provider1Db = env.authenticatedContext("provider-1", { email: "provider@example.com" }).firestore();
+  const provider2Db = env.authenticatedContext("provider-2", { email: "provider2@example.com" }).firestore();
+
+  async function accept(db, providerId, providerName) {
+    return runTransaction(db, async (tx) => {
+      const requestRef = doc(db, "openRequests", "pending-1");
+      const request = await tx.get(requestRef);
+      if (!request.exists() || request.data().status !== "pending") return false;
+
+      tx.update(doc(db, "bookings", "pending-1"), {
+        status: "assigned",
+        mechanicId: providerId,
+        mechanicName: providerName,
+        mechanicPhone: "",
+        mechanicArea: "Central",
+        mechanicJobs: 0,
+        mechanicUpi: "",
+        mechanicCoord: null,
+        etaMin: null,
+        history: [{ s: "assigned", t: "2026-11-26T00:00:00.000Z" }],
+      });
+      tx.delete(requestRef);
+      return true;
+    });
+  }
+
+  assert.equal(await accept(provider1Db, "provider-1", "Test Provider"), true);
+  assert.equal(await accept(provider2Db, "provider-2", "Second Provider"), false);
+
+  const finalBooking = await getDoc(doc(provider1Db, "bookings", "pending-1"));
+  assert.equal(finalBooking.data().mechanicId, "provider-1");
+  await assertFails(getDoc(doc(provider1Db, "openRequests", "pending-1")).then((snap) => {
+    if (snap.exists()) throw new Error("Consumed request should not exist");
+  }));
 });
 
 test("customers can read only their own booking", async () => {
