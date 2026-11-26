@@ -1,9 +1,10 @@
 # Mechanic push notifications
 
 VAHANOVA sends a data-only Firebase Cloud Messaging (FCM) push when a new
-pending document is created in `openRequests`. The Cloud Function targets
-approved mechanics with an active public provider profile and at least one
-registered device token. The notification contains only the sanitized service
+pending document is created in `openRequests`, and sends a private alert when a
+new booking is created with a mechanic already assigned. Open requests notify
+all approved mechanics with an active public provider profile and a registered
+device token; direct bookings notify only the assigned mechanic. The notification contains only the sanitized service
 summary; customer phone numbers and exact addresses are never included.
 
 ## One-time Firebase setup
