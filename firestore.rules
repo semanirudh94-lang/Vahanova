@@ -162,7 +162,12 @@ service cloud.firestore {
     }
     match /openRequests/{id} {
       // Only non-sensitive request summaries are stored in this collection.
-      allow get, list: if isMechanic() && resource.data.status == 'pending';
+      // A provider may read a known request ID after it has been consumed so a
+      // retried acceptance transaction can return "already claimed" cleanly.
+      allow get: if isMechanic()
+        && (!exists(/databases/$(database)/documents/openRequests/$(id))
+          || resource.data.status == 'pending');
+      allow list: if isMechanic() && resource.data.status == 'pending';
       allow create: if signedIn()
         && request.resource.data.keys().hasAll([
           'bookingId', 'code', 'service', 'kind', 'date', 'createdAt', 'status'
