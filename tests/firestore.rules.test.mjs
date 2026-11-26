@@ -182,3 +182,20 @@ test("new users cannot grant themselves provider role", async () => {
   await assertSucceeds(setDoc(doc(customerDb, "users", "new-user"), { role: "customer" }));
   await assertFails(setDoc(doc(selfPromotedDb, "users", "self-promoted"), { role: "mechanic" }));
 });
+
+
+test("mechanics can register only their own private push device tokens", async () => {
+  await seed();
+  const providerDb = env.authenticatedContext("provider-1", { email: "provider@example.com" }).firestore();
+  const otherProviderDb = env.authenticatedContext("provider-2", { email: "provider2@example.com" }).firestore();
+  const customerDb = env.authenticatedContext("customer-1", { email: "customer@example.com" }).firestore();
+  const tokenDoc = doc(providerDb, "mechanicDevices", "provider-1");
+
+  await assertSucceeds(setDoc(tokenDoc, { tokens: ["test-device-token"], updatedAt: new Date() }));
+  await assertSucceeds(getDoc(tokenDoc));
+  await assertFails(getDoc(doc(otherProviderDb, "mechanicDevices", "provider-1")));
+  await assertFails(getDocs(collection(providerDb, "mechanicDevices")));
+  await assertFails(setDoc(doc(customerDb, "mechanicDevices", "customer-1"), {
+    tokens: ["customer-token"], updatedAt: new Date(),
+  }));
+});
