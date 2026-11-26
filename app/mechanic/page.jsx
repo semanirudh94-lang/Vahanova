@@ -19,6 +19,7 @@ import {
   Loader2,
 } from "lucide-react";
 import AppShell from "@/components/AppShell";
+import MechanicNotifications from "@/components/MechanicNotifications";
 import Stars from "@/components/Stars";
 import { currentUser, openRequestsForMechanic, subscribeOpenRequestsForMechanic, acceptBooking, updateBooking, completeBooking, providerProfile, saveProviderProfile, ratingsForProvider, syncProviderContactsForMechanic } from "@/lib/db";
 import { STATUS_LABEL, STATUS_TINT, SERVICES, SERVICE_BY_KEY, VEHICLE_TYPES, SERVICE_MODES } from "@/data/services";
@@ -229,6 +230,7 @@ export default function Mechanic() {
 
   return (
     <AppShell items={NAV} active="Dashboard">
+      <MechanicNotifications />
       <div id="dashboard" className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Stat icon={Wrench} label="Active jobs" value={today.length} />
         <Stat icon={CheckCircle2} label="Completed" value={completed.length} tint="text-green-400 bg-green-500/10" />
@@ -273,7 +275,7 @@ export default function Mechanic() {
       </div>
 
       <div id="requests" className="rounded-xl border border-brand-amber/40 bg-brand-amber/5 p-6">
-        <p className="font-semibold text-brand-amber">Open requests (any provider can accept)</p>
+        <div className="flex flex-wrap items-center justify-between gap-2"><p className="font-semibold text-brand-amber">Open requests (any provider can accept)</p><span className="rounded-full bg-brand-amber/15 px-3 py-1 text-xs font-bold text-brand-amber">{openPool.length} pending</span></div>
         <div className="mt-4 space-y-3">
           {openPool.length === 0 && <p className="text-sm text-gray-400">No open requests right now. New requests will appear here automatically.</p>}
           {openPool.map((b) => (
