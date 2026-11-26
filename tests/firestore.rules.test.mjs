@@ -1,3 +1,4 @@
+import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
 import { readFile } from "node:fs/promises";
 import {
@@ -142,9 +143,8 @@ test("only one provider can atomically accept an open request", async () => {
 
   const finalBooking = await getDoc(doc(provider1Db, "bookings", "pending-1"));
   assert.equal(finalBooking.data().mechanicId, "provider-1");
-  await assertFails(getDoc(doc(provider1Db, "openRequests", "pending-1")).then((snap) => {
-    if (snap.exists()) throw new Error("Consumed request should not exist");
-  }));
+  const remainingRequest = await getDoc(doc(provider1Db, "openRequests", "pending-1"));
+  assert.equal(remainingRequest.exists(), false);
 });
 
 test("customers can read only their own booking", async () => {
