@@ -3,7 +3,7 @@ export const SITE = {
   tagline: "Every journey, taken care of.",
   whatsapp: "919068511310",
   phoneDisplay: "+91 90685 11310",
-  email: "semanirudh@gmail.com",
+  email: "semanirudh94@gmail.com",
   city: "Dehradun",
 };
 
