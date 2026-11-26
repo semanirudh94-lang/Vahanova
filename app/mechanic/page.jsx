@@ -69,6 +69,8 @@ export default function Mechanic() {
   const [cardOpen, setCardOpen] = useState(false);
   const [draft, setDraft] = useState(null);
   const [saved, setSaved] = useState(false);
+  const [savingCard, setSavingCard] = useState(false);
+  const [cardError, setCardError] = useState("");
   const [billing, setBilling] = useState(null);
   const [bill, setBill] = useState({ parts: [{ name: "", qty: 1, price: 0 }], labour: "", warrantyDays: "", note: "", paymentMode: "" });
   const gps = useLocation();
@@ -185,25 +187,42 @@ export default function Mechanic() {
   function openCard() {
     setDraft(toDraft(profile, user));
     setSaved(false);
+    setCardError("");
     setCardOpen(true);
   }
 
   async function saveCard() {
-    const savedProfile = await saveProviderProfile({
-      name: draft.name,
-      phone: draft.phone,
-      area: draft.area,
-      coord: draft.coord,
-      upi: draft.upi,
-      vehicleTypes: draft.vehicleTypes,
-      active: draft.active,
-      services: SERVICES.map((s) => ({ key: s.key, price: Number(draft.rates[s.key].price) || 0, mode: draft.rates[s.key].mode })).filter(
-        (s) => s.price > 0
-      ),
-    });
-    setProfile(savedProfile);
-    setSaved(true);
-    refresh();
+    if (savingCard) return;
+    const services = SERVICES.map((s) => ({ key: s.key, price: Number(draft.rates[s.key].price) || 0, mode: draft.rates[s.key].mode })).filter((s) => s.price > 0);
+    if (!services.length) {
+      setCardError("Kam se kam ek service ka price enter karo.");
+      return;
+    }
+    setSavingCard(true);
+    setCardError("");
+    try {
+      const savedProfile = await saveProviderProfile({
+        name: draft.name,
+        phone: draft.phone,
+        area: draft.area,
+        coord: draft.coord,
+        upi: draft.upi,
+        vehicleTypes: draft.vehicleTypes,
+        active: draft.active,
+        services,
+      });
+      if (!savedProfile) throw new Error("Provider profile save nahi hua. Dobara login karke try karo.");
+      setProfile(savedProfile);
+      setSaved(true);
+      await refresh();
+    } catch (error) {
+      console.error("Rate card save failed:", error);
+      setCardError(error?.code === "permission-denied"
+        ? "Firebase permission error: Firestore rules deploy/check karo."
+        : error?.message || "Rate card save nahi hua. Dobara try karo.");
+    } finally {
+      setSavingCard(false);
+    }
   }
 
   const partsTotal = bill.parts.reduce((s, p) => s + (Number(p.qty) || 0) * (Number(p.price) || 0), 0);
@@ -563,13 +582,14 @@ export default function Mechanic() {
             </label>
 
             <div className="mt-5 flex gap-3">
-              <button onClick={saveCard} className="flex-1 rounded-lg bg-brand-amber py-3 font-bold text-navy">
-                Publish rate card
+              <button onClick={saveCard} disabled={savingCard} className="flex-1 rounded-lg bg-brand-amber py-3 font-bold text-navy disabled:opacity-50">
+                {savingCard ? "Publishing..." : "Publish rate card"}
               </button>
               <button onClick={() => setCardOpen(false)} className="rounded-lg border border-navy-border px-5 py-3 text-sm text-gray-300">
                 Close
               </button>
             </div>
+            {cardError && <p role="alert" className="mt-3 text-sm text-red-400">{cardError}</p>}
             {saved && <p className="mt-3 text-sm text-green-400">Rate card saved. Customers can see it now.</p>}
           </div>
         </div>
